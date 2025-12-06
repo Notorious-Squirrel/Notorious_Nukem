@@ -153,9 +153,9 @@ class Player {
         this.w = 24;
         this.h = 32;
 
-        // Start position – slightly above the cinema canopy / street so gravity settles him
+        // Start position – over the street so he drops and lands nicely
         this.startX = 50;
-        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE - this.h;
+        this.startY = (LEVEL_HEIGHT - 2) * TILE_SIZE - this.h;
 
         this.x = this.startX;
         this.y = this.startY;
@@ -297,6 +297,9 @@ class Player {
         if (cameraX < 0) cameraX = 0;
         const maxCam = LEVEL_WIDTH * TILE_SIZE - canvas.width;
         if (cameraX > maxCam) cameraX = maxCam;
+
+        // Debug: see his X in console
+        // console.log("player.x =", this.x);
     }
 
     collides() {
