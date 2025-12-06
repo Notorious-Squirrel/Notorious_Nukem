@@ -21,7 +21,17 @@
     </style>
 </head>
 <body>
-    <canvas id="game"></canvas>
+    <!-- tabindex makes the canvas focusable -->
+    <canvas id="game" tabindex="0"></canvas>
+
+    <!-- auto-focus the canvas so arrow keys work straight away -->
+    <script>
+        window.addEventListener("load", () => {
+            const c = document.getElementById("game");
+            c.focus();
+        });
+    </script>
+
     <script src="js/nukem_game.js"></script>
 </body>
 </html>
