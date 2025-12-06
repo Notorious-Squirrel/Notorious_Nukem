@@ -57,8 +57,8 @@ const sprites = {
 };
 
 sprites.run.src   = "assets/nukem_run.png";
-sprites.jump.src  = "assets/nukem_jump.png";
-sprites.climb.src = "assets/nukem_climb.png";
+sprites.jump.src  = "assets/nukem_Jump.png";      // match your actual file
+sprites.climb.src = "assets/nukem_ladder.png";    // match your actual file
 sprites.shoot.src = "assets/nukem_shoot.png";
 
 // LEFT-FACING enemy sheet
