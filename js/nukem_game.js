@@ -5,7 +5,7 @@
    Requires (in /assets):
    nukem_run.png
    nukem_jump.png
-   nukem_climb.png
+   nukem_ladder.png
    nukem_shoot.png
    enemy_goon.png      <-- LEFT-FACING, 4 frames, 1 row
    Optional:
@@ -23,13 +23,12 @@ canvas.height = 270;
 ------------------------------------------------------------ */
 const keys = {};
 document.addEventListener("keydown", e => {
-    console.log("key:", e.key);   // debug so you can see arrows firing
+    console.log("key:", e.key);   // debug – see ArrowLeft/Right/Z/X in console
     keys[e.key] = true;
 });
-document.addEventListener("keyup",   e => {
+document.addEventListener("keyup", e => {
     keys[e.key] = false;
 });
-
 
 /* ------------------------------------------------------------
    CONFIG + GLOBALS
@@ -63,18 +62,19 @@ const sprites = {
 };
 
 sprites.run.src   = "assets/nukem_run.png";
-sprites.jump.src  = "assets/nukem_jump.png";      // match your actual file
-sprites.climb.src = "assets/nukem_ladder.png";    // match your actual file
+sprites.jump.src  = "assets/nukem_jump.png";
+sprites.climb.src = "assets/nukem_ladder.png";
 sprites.shoot.src = "assets/nukem_shoot.png";
 
-// Debug: log when sprites load / fail
-sprites.run.onload   = () => console.log("RUN loaded", sprites.run.width, sprites.run.height);
-sprites.jump.onload  = () => console.log("JUMP loaded", sprites.jump.width, sprites.jump.height);
+// Debug: log when sprites load
+sprites.run.onload   = () => console.log("RUN loaded",   sprites.run.width,   sprites.run.height);
+sprites.jump.onload  = () => console.log("JUMP loaded",  sprites.jump.width,  sprites.jump.height);
 sprites.climb.onload = () => console.log("CLIMB loaded", sprites.climb.width, sprites.climb.height);
 sprites.shoot.onload = () => console.log("SHOOT loaded", sprites.shoot.width, sprites.shoot.height);
 
+// Only log hard failures for non-jump to avoid spam
 sprites.run.onerror   = () => console.error("RUN failed to load");
-sprites.jump.onerror  = () => console.error("JUMP failed to load");
+// sprites.jump.onerror  = () => console.error("JUMP failed to load"); // soft-fail, we fall back
 sprites.climb.onerror = () => console.error("CLIMB failed to load");
 sprites.shoot.onerror = () => console.error("SHOOT failed to load");
 
@@ -256,7 +256,7 @@ class Player {
         if (this.shootCooldown > 0) this.shootCooldown--;
 
         // State if not climbing / shooting
-        if (!this.onLadder && this.grounded && this.state !== "shoot") {
+        if (!this.onLadder && this.state !== "shoot") {
             if (!this.grounded) this.state = "jump";
             else if (moving) this.state = "run";
             else this.state = "idle";
@@ -345,22 +345,56 @@ class Player {
         let img = sprites.run;
         let frames = SPRITE_FRAMES.run;
 
+        // Safe selection with fallbacks
         switch (this.state) {
-            case "run":   img = sprites.run;   frames = SPRITE_FRAMES.run;   break;
-            case "jump":  img = sprites.jump;  frames = SPRITE_FRAMES.jump;  break;
-            case "climb": img = sprites.climb; frames = SPRITE_FRAMES.climb; break;
-            case "shoot": img = sprites.shoot; frames = SPRITE_FRAMES.shoot; break;
-            default:      img = sprites.run;   frames = SPRITE_FRAMES.run;   break;
+            case "run":
+                img = sprites.run;
+                frames = SPRITE_FRAMES.run;
+                break;
+
+            case "jump":
+                if (sprites.jump && sprites.jump.width > 0) {
+                    img = sprites.jump;
+                    frames = SPRITE_FRAMES.jump;
+                } else {
+                    img = sprites.run;
+                    frames = SPRITE_FRAMES.run;
+                }
+                break;
+
+            case "climb":
+                if (sprites.climb && sprites.climb.width > 0) {
+                    img = sprites.climb;
+                    frames = SPRITE_FRAMES.climb;
+                } else {
+                    img = sprites.run;
+                    frames = SPRITE_FRAMES.run;
+                }
+                break;
+
+            case "shoot":
+                if (sprites.shoot && sprites.shoot.width > 0) {
+                    img = sprites.shoot;
+                    frames = SPRITE_FRAMES.shoot;
+                } else {
+                    img = sprites.run;
+                    frames = SPRITE_FRAMES.run;
+                }
+                break;
+
+            default:
+                img = sprites.run;
+                frames = SPRITE_FRAMES.run;
+                break;
         }
 
+        // If even the chosen image isn't ready, draw a debug box
         if (!img.complete || img.width === 0) {
-       // Fallback: draw a green box where the squirrel should be
-       const dx = worldToScreen(this.x);
-       ctx.fillStyle = "#00ff00";
-       ctx.fillRect(dx, this.y, this.w, this.h);
-       return;
-}
-
+            const dx = worldToScreen(this.x);
+            ctx.fillStyle = "#00ff00";
+            ctx.fillRect(dx, this.y, this.w, this.h);
+            return;
+        }
 
         const frameWidth = img.width / frames;
         const frameIndex = this.state === "idle" ? 0 : (this.frame % frames);
