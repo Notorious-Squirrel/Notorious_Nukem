@@ -193,16 +193,6 @@ class Player {
     // ...rest of Player class stays exactly as you have it
 }
 
-
-    reset() {
-        this.x = this.startX;
-        this.y = this.startY;
-        this.velX = 0;
-        this.velY = 0;
-        this.health = 3;
-        this.invincibleTimer = 0;
-    }
-
     update() {
         if (this.invincibleTimer > 0) this.invincibleTimer--;
 
