@@ -61,6 +61,17 @@ sprites.jump.src  = "assets/nukem_Jump.png";      // match your actual file
 sprites.climb.src = "assets/nukem_ladder.png";    // match your actual file
 sprites.shoot.src = "assets/nukem_shoot.png";
 
+// Debug: log when sprites load / fail
+sprites.run.onload   = () => console.log("RUN loaded", sprites.run.width, sprites.run.height);
+sprites.jump.onload  = () => console.log("JUMP loaded", sprites.jump.width, sprites.jump.height);
+sprites.climb.onload = () => console.log("CLIMB loaded", sprites.climb.width, sprites.climb.height);
+sprites.shoot.onload = () => console.log("SHOOT loaded", sprites.shoot.width, sprites.shoot.height);
+
+sprites.run.onerror   = () => console.error("RUN failed to load");
+sprites.jump.onerror  = () => console.error("JUMP failed to load");
+sprites.climb.onerror = () => console.error("CLIMB failed to load");
+sprites.shoot.onerror = () => console.error("SHOOT failed to load");
+
 // LEFT-FACING enemy sheet
 const enemySprite = new Image();
 enemySprite.src = "assets/enemy_goon.png";
