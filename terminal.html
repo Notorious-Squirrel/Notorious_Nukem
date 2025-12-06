@@ -29,7 +29,7 @@
 
     #input-line {
         display: flex;
-        align-items: center;
+        align-items: centre;
         gap: 5px;
         border-top: 1px solid #00ff9c;
         padding-top: 5px;
@@ -52,7 +52,39 @@
 
     ::selection {
         background: #00ff9c;
-        color: #000;
+        colour: #000;
+    }
+
+    /* === Nano overlay === */
+    #nanoOverlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        color: #00ff9c;
+        font-family: monospace;
+        padding: 10px;
+        display: none;
+        flex-direction: column;
+        box-sizing: border-box;
+    }
+
+    #nanoEditor {
+        flex: 1;
+        white-space: pre-wrap;
+        outline: none;
+        overflow-y: auto;
+        margin: 4px 0;
+    }
+
+    #nanoStatus {
+        background: #003322;
+        padding: 2px 4px;
+    }
+
+    #nanoHelp {
+        background: #002211;
+        padding: 2px 4px;
+        font-size: 0.9rem;
     }
 </style>
 </head>
@@ -63,6 +95,13 @@
         <span id="prompt"></span>
         <input id="cmdline" autocomplete="off" autofocus>
     </div>
+</div>
+
+<!-- Nano overlay UI -->
+<div id="nanoOverlay">
+    <div id="nanoStatus"></div>
+    <div id="nanoEditor" contenteditable="true"></div>
+    <div id="nanoHelp">^S Save   ^X Exit</div>
 </div>
 
 <script>
@@ -166,10 +205,19 @@ let cwd = ["home", "notoruss"];  // current working directory as path segments (
 const history = [];
 let historyIndex = -1;
 
+/* Nano state */
+let nanoActive = false;
+let nanoFilePath = null;
+let nanoNode = null;
+
 /* ========= DOM ========= */
 const termEl = document.getElementById("terminal");
 const promptEl = document.getElementById("prompt");
 const cmdEl = document.getElementById("cmdline");
+
+const nanoOverlay = document.getElementById("nanoOverlay");
+const nanoEditor = document.getElementById("nanoEditor");
+const nanoStatus = document.getElementById("nanoStatus");
 
 /* ========= HELPERS ========= */
 
@@ -226,13 +274,37 @@ function ensureDir(node) {
     return node && node.type === "dir";
 }
 
+/* Long listing formatter for ls -l/-al */
+function formatLongEntry(name, nodeOrType) {
+    const isDir =
+        nodeOrType === "dir" ||
+        (nodeOrType && nodeOrType.type === "dir");
+    const typeChar = isDir ? "d" : "-";
+
+    const perms = typeChar + "rwxr-xr-x";
+    const links = "1";
+    const owner = USERNAME;
+    const group = USERNAME;
+
+    let size = 0;
+    if (nodeOrType && nodeOrType.type === "file") {
+        size = (nodeOrType.content || "").length;
+    } else {
+        size = 4096;
+    }
+
+    const date = "Dec  6 13:37"; // fake static timestamp
+
+    return `${perms} ${links} ${owner} ${group} ${String(size).padStart(5, " ")} ${date} ${name}`;
+}
+
 /* ========= COMMAND IMPLEMENTATIONS ========= */
 
 function cmd_help() {
     print(
 `Available commands:
   help          Show this help
-  ls [path]     List directory contents
+  ls [opts]     List directory contents (-a, -l, -al)
   cd [path]     Change directory
   pwd           Print working directory
   cat <file>    Show file contents
@@ -242,7 +314,8 @@ function cmd_help() {
   rmdir <name>  Remove empty directory
   echo [text]   Print text
   whoami        Show current user
-  uname -a      Show system info
+  uname [-a]    Show system info
+  nano <file>   Edit file
   clear         Clear the screen`
     );
 }
@@ -252,18 +325,70 @@ function cmd_pwd() {
 }
 
 function cmd_ls(args) {
-    const targetPath = args[0] ? resolvePath(args[0]) : cwd;
+    let showAll = false;  // -a
+    let longFmt = false;  // -l
+    const paths = [];
+
+    // Parse flags and optional path
+    for (const a of args) {
+        if (a.startsWith("-")) {
+            if (a.includes("a")) showAll = true;
+            if (a.includes("l")) longFmt = true;
+        } else {
+            paths.push(a);
+        }
+    }
+
+    const targetPath = paths[0] ? resolvePath(paths[0]) : cwd;
     const node = getNode(targetPath);
+
     if (!node) {
-        print(`ls: cannot access '${args[0]}': No such file or directory`);
+        const label = paths[0] || "";
+        print(`ls: cannot access '${label}': No such file or directory`);
         return;
     }
+
+    // If it's a file, just show the file
     if (node.type === "file") {
-        print(args[0] || targetPath[targetPath.length - 1]);
+        const name = paths[0] || targetPath[targetPath.length - 1];
+        if (longFmt) {
+            print(formatLongEntry(name, node));
+        } else {
+            print(name);
+        }
         return;
     }
+
+    // It's a directory
+    const entries = [];
+
+    // . and .. for -a
+    if (showAll) {
+        entries.push({ name: ".", special: "dot" });
+        if (targetPath.length > 0) {
+            entries.push({ name: "..", special: "dotdot" });
+        }
+    }
+
     const names = Object.keys(node.children).sort();
-    print(names.join("  "));
+    for (const name of names) {
+        if (!showAll && name.startsWith(".")) continue;
+        entries.push({ name, node: node.children[name] });
+    }
+
+    if (longFmt) {
+        for (const e of entries) {
+            if (e.special === "dot") {
+                print(formatLongEntry(".", "dir"));
+            } else if (e.special === "dotdot") {
+                print(formatLongEntry("..", "dir"));
+            } else {
+                print(formatLongEntry(e.name, e.node));
+            }
+        }
+    } else {
+        print(entries.map(e => e.name).join("  "));
+    }
 }
 
 function cmd_cd(args) {
@@ -305,7 +430,7 @@ function cmd_whoami() {
 
 function cmd_uname(args) {
     if (args.length && args[0] === "-a") {
-        print(`NotoriousOS blackwire 1.0 #1337 SMP x86_64 GNU/Linux`);
+        print(`NotoriousOS ${HOSTNAME} 1.0 #1337 SMP x86_64 GNU/Linux`);
     } else {
         print("NotoriousOS");
     }
@@ -387,6 +512,75 @@ function cmd_rmdir(args) {
     delete parent.children[name];
 }
 
+/* ========= NANO IMPLEMENTATION ========= */
+
+function openNano(pathStr) {
+    nanoFilePath = resolvePath(pathStr);
+    nanoNode = getNode(nanoFilePath);
+
+    const filename = pathStr.split("/").pop();
+
+    // Create file if missing
+    if (!nanoNode) {
+        const parentPath = nanoFilePath.slice(0, -1);
+        const parent = getNode(parentPath);
+        if (parent && parent.type === "dir") {
+            parent.children[filename] = { type: "file", content: "" };
+            nanoNode = parent.children[filename];
+        } else {
+            print(`nano: cannot create '${pathStr}': No such directory`);
+            nanoFilePath = null;
+            nanoNode = null;
+            return;
+        }
+    }
+
+    if (nanoNode.type !== "file") {
+        print(`nano: '${pathStr}' is not a file`);
+        nanoFilePath = null;
+        nanoNode = null;
+        return;
+    }
+
+    nanoActive = true;
+    nanoEditor.innerText = nanoNode.content || "";
+    nanoStatus.innerText = `Editing ${filename}`;
+    nanoOverlay.style.display = "flex";
+    nanoEditor.focus();
+}
+
+function closeNano(save) {
+    if (save && nanoNode) {
+        nanoNode.content = nanoEditor.innerText;
+    }
+    nanoActive = false;
+    nanoOverlay.style.display = "none";
+    nanoFilePath = null;
+    nanoNode = null;
+    nanoEditor.innerText = "";
+    cmdEl.focus();
+}
+
+// Handle nano keyboard shortcuts
+document.addEventListener("keydown", (e) => {
+    if (!nanoActive) return;
+
+    if (e.ctrlKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        nanoStatus.innerText = "Saved";
+        if (nanoNode) {
+            nanoNode.content = nanoEditor.innerText;
+        }
+        return;
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        closeNano(true);
+        return;
+    }
+});
+
 /* ========= COMMAND DISPATCH ========= */
 
 function runCommand(line) {
@@ -413,6 +607,15 @@ function runCommand(line) {
         case "touch":     cmd_touch(args); break;
         case "rm":        cmd_rm(args); break;
         case "rmdir":     cmd_rmdir(args); break;
+        case "nano":
+            if (!args[0]) {
+                print("nano: missing file operand");
+            } else {
+                openNano(args[0]);
+            }
+            break;
+        case "":
+            break;
         default:
             print(`bash: ${cmd}: command not found`);
     }
@@ -421,6 +624,11 @@ function runCommand(line) {
 /* ========= INPUT HANDLING ========= */
 
 cmdEl.addEventListener("keydown", (e) => {
+    if (nanoActive) {
+        // Ignore terminal input while nano is active
+        return;
+    }
+
     if (e.key === "Enter") {
         const input = cmdEl.value;
         const currentPrompt = promptEl.textContent;
@@ -461,4 +669,3 @@ init();
 </script>
 </body>
 </html>
-
