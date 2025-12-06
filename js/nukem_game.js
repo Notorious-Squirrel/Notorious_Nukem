@@ -347,7 +347,14 @@ class Player {
             default:      img = sprites.run;   frames = SPRITE_FRAMES.run;   break;
         }
 
-        if (!img.complete || img.width === 0) return;
+        if (!img.complete || img.width === 0) {
+       // Fallback: draw a green box where the squirrel should be
+       const dx = worldToScreen(this.x);
+       ctx.fillStyle = "#00ff00";
+       ctx.fillRect(dx, this.y, this.w, this.h);
+       return;
+}
+
 
         const frameWidth = img.width / frames;
         const frameIndex = this.state === "idle" ? 0 : (this.frame % frames);
