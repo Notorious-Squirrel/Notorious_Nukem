@@ -2,63 +2,175 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Notorious Squirrel - Hub</title>
+<title>Notorious Nukem – Home Hub</title>
+
 <style>
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
 body {
-    background: #1a1a1a;
-    colour: #e2e2e2;
-    font-family: "Press Start 2P", monospace;
+    background: #000;
+    font-family: "Press Start 2P", monospace, system-ui;
+    color: #bffcff;
+}
+
+/* Full-screen hub area */
+.hub {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: url("business_center_bg.png") no-repeat centre/cover;
+}
+
+/* Neon title billboard at the top */
+.logo {
+    position: absolute;
+    top: 3%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    font-size: 2.2rem;
+    letter-spacing: 0.12em;
     text-align: centre;
-    padding: 40px;
+    background: rgba(0, 0, 0, 0.65);
+    border: 4px solid #00f0ff;
+    box-shadow:
+        0 0 10px #00f0ff,
+        0 0 25px #00aaff,
+        0 0 40px #0077ff;
 }
-.container {
-    max-width: 600px;
-    margin: auto;
-    border: 4px solid #44ff66;
-    padding: 20px;
-    background: #000000;
+
+.logo span.symbol {
+    margin-right: 12px;
+    colour: #00ff9c;
 }
-.title {
-    font-size: 26px;
-    margin-bottom: 20px;
-    text-shadow: 0 0 8px #00ff88;
+
+/* Small “press start” prompt */
+.press-start {
+    position: absolute;
+    top: 16%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    text-shadow: 0 0 6px #00f0ff;
+    animation: blink 1s steps(2, start) infinite;
 }
-.menu-item {
-    margin: 12px 0;
-    font-size: 18px;
+
+@keyframes blink {
+    50% { opacity: 0; }
 }
-.menu-item:hover {
-    colour: #44ff66;
+
+/* Shared styling for menu hotspots */
+.menu-node {
+    position: absolute;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #00ffc3;
+    text-decoration: none;
+    colour: #e7ffff;
+    box-shadow: 0 0 6px #00ffc3;
     cursor: pointer;
-    text-shadow: 0 0 6px #44ff66;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.status {
-    margin-top: 25px;
-    font-size: 14px;
-    colour: #999;
+
+.menu-node::before {
+    content: "■ ";
+    colour: #ffeb3b;
+}
+
+.menu-node:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 12px #00ffc3;
+}
+
+/* Platform placements (adjust percentages to line up with tiles) */
+
+/* Mid-level – left to right */
+#start-game {
+    bottom: 48%;   /* sits on first mid platform */
+    left: 12%;
+}
+
+#training {
+    bottom: 48%;
+    left: 38%;
+}
+
+#load-game {
+    bottom: 48%;
+    left: 64%;
+}
+
+/* Ground level */
+#arsenal {
+    bottom: 14%;
+    left: 18%;
+}
+
+#options {
+    bottom: 14%;
+    left: 44%;
+}
+
+#credits {
+    bottom: 14%;
+    left: 70%;
+}
+
+/* High right platform */
+#extras {
+    bottom: 62%;
+    right: 8%;
 }
 </style>
 </head>
 <body>
-<div class="container">
-    <div class="title">NOTORIOUS SQUIRREL</div>
-    <div>Press START</div>
 
-    <hr>
+<div class="hub">
 
-    <div class="menu">
-        <div class="menu-item">▶ Start Mission</div>
-        <div class="menu-item">▶ Training Dojo</div>
-        <div class="menu-item">▶ Weapons Locker</div>
-        <div class="menu-item">▶ Inventory</div>
-        <div class="menu-item">▶ Squirrel HQ (Save / Load)</div>
-        <div class="menu-item">▶ Options</div>
+    <div class="logo">
+        <span class="symbol">¤</span> NOTORIOUS NUKEM
     </div>
 
-    <div class="status">
-        Health: 100% • Upgrades: 0/5 • Acorns: 0000 • Difficulty: Normal
-    </div>
+    <div class="press-start">PRESS START TO SPAWN</div>
+
+    <!-- Mid-level “Duke Nukem” style platforms -->
+    <a href="#start" class="menu-node" id="start-game">
+        Mission Briefing – Start Game
+    </a>
+
+    <a href="#training" class="menu-node" id="training">
+        Combat Sim – Training
+    </a>
+
+    <a href="#load" class="menu-node" id="load-game">
+        Data Vault – Load / Continue
+    </a>
+
+    <!-- Ground level props -->
+    <a href="#arsenal" class="menu-node" id="arsenal">
+        Weapons Crate – Arsenal
+    </a>
+
+    <a href="#options" class="menu-node" id="options">
+        Locker Room – Options
+    </a>
+
+    <a href="#credits" class="menu-node" id="credits">
+        Neon Alley – Credits
+    </a>
+
+    <!-- High right platform / secret area -->
+    <a href="#extras" class="menu-node" id="extras">
+        Roof Laptop – Extras / CTF Codes
+    </a>
+
 </div>
+
 </body>
 </html>
-
