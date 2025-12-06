@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Notorious Squirrel // Linux Terminal</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;
+        color: #00ff9c;
+        font-family: monospace;
+    }
+
+    #wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+
+    #terminal {
+        flex: 1;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+
+    #input-line {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        border-top: 1px solid #00ff9c;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+
+    #prompt {
+        white-space: pre;
+    }
+
+    #cmdline {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #00ff9c;
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    ::selection {
+        background: #00ff9c;
+        color: #000;
+    }
+</style>
+</head>
+<body>
+<div id="wrapper">
+    <div id="terminal"></div>
+    <div id="input-line">
+        <span id="prompt"></span>
+        <input id="cmdline" autocomplete="off" autofocus>
+    </div>
+</div>
+
+<script>
+/* ========= CONFIG ========= */
+const USERNAME = "notoruss";
+const HOSTNAME = "blackwire";
+
+/* Fake filesystem structure */
+const FS_ROOT = {
+    type: "dir",
+    children: {
+        "home": {
+            type: "dir",
+            children: {
+                "notoruss": {
+                    type: "dir",
+                    children: {
+                        "readme.txt": {
+                            type: "file",
+                            content:
+`Welcome, ${USERNAME}.
+
+This is a simulated Linux terminal for your CTF.
+Explore the filesystem with 'ls' and 'cd'.
+
+Hint: real hackers dig around /opt and /var...
+`
+                        },
+                        "notes.txt": {
+                            type: "file",
+                            content:
+`Things to do:
+- Build Notorious Nukem Game Boy cart
+- Hide flags where no one looks
+- Profit`
+                        }
+                    }
+                }
+            }
+        },
+        "etc": {
+            type: "dir",
+            children: {
+                "issue": {
+                    type: "file",
+                    content: "Notorious OS 1.0 (Blackwire Build)\n"
+                },
+                "motd": {
+                    type: "file",
+                    content:
+`Welcome to Blackwire Node-01
+Authorised squirrels only.`
+                }
+            }
+        },
+        "var": {
+            type: "dir",
+            children: {
+                "log": {
+                    type: "dir",
+                    children: {
+                        "auth.log": {
+                            type: "file",
+                            content:
+`Dec  6 13:37 blackwire login[1337]: Accepted password for ${USERNAME}`
+                        }
+                    }
+                }
+            }
+        },
+        "bin": {
+            type: "dir",
+            children: {
+                "ls": { type: "file", content: "ELF 64-bit LSB executable" },
+                "cat": { type: "file", content: "ELF 64-bit LSB executable" }
+            }
+        },
+        "opt": {
+            type: "dir",
+            children: {
+                "ctf": {
+                    type: "dir",
+                    children: {
+                        "flag.txt": {
+                            type: "file",
+                            content: "FLAG{NOTORIOUS-SQUIRREL-TERMINAL-01}"
+                        },
+                        "hint.txt": {
+                            type: "file",
+                            content: "You’re closer than you think. Did you cat the right file?"
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+/* ========= STATE ========= */
+let cwd = ["home", "notoruss"];  // current working directory as path segments (relative to root)
+const history = [];
+let historyIndex = -1;
+
+/* ========= DOM ========= */
+const termEl = document.getElementById("terminal");
+const promptEl = document.getElementById("prompt");
+const cmdEl = document.getElementById("cmdline");
+
+/* ========= HELPERS ========= */
+
+function print(text = "") {
+    termEl.textContent += text + "\n";
+    termEl.scrollTop = termEl.scrollHeight;
+}
+
+function getPathString(pathArr) {
+    if (!pathArr.length) return "/";
+    return "/" + pathArr.join("/");
+}
+
+function updatePrompt() {
+    const pathStr = getPathString(cwd);
+    promptEl.textContent = `${USERNAME}@${HOSTNAME}:${pathStr}$ `;
+}
+
+function resolvePath(pathStr) {
+    if (!pathStr || pathStr === ".") return [...cwd];
+
+    let parts = pathStr.split("/").filter(Boolean);
+    let result;
+
+    if (pathStr.startsWith("/")) {
+        result = [];
+    } else {
+        result = [...cwd];
+    }
+
+    for (const part of parts) {
+        if (part === ".") continue;
+        if (part === "..") {
+            if (result.length > 0) result.pop();
+        } else {
+            result.push(part);
+        }
+    }
+    return result;
+}
+
+function getNode(pathArr) {
+    let node = FS_ROOT;
+    for (const segment of pathArr) {
+        if (!node.children || !node.children[segment]) {
+            return null;
+        }
+        node = node.children[segment];
+    }
+    return node;
+}
+
+function ensureDir(node) {
+    return node && node.type === "dir";
+}
+
+/* ========= COMMAND IMPLEMENTATIONS ========= */
+
+function cmd_help() {
+    print(
+`Available commands:
+  help          Show this help
+  ls [path]     List directory contents
+  cd [path]     Change directory
+  pwd           Print working directory
+  cat <file>    Show file contents
+  mkdir <name>  Create directory
+  touch <name>  Create empty file
+  rm <file>     Remove file
+  rmdir <name>  Remove empty directory
+  echo [text]   Print text
+  whoami        Show current user
+  uname -a      Show system info
+  clear         Clear the screen`
+    );
+}
+
+function cmd_pwd() {
+    print(getPathString(cwd));
+}
+
+function cmd_ls(args) {
+    const targetPath = args[0] ? resolvePath(args[0]) : cwd;
+    const node = getNode(targetPath);
+    if (!node) {
+        print(`ls: cannot access '${args[0]}': No such file or directory`);
+        return;
+    }
+    if (node.type === "file") {
+        print(args[0] || targetPath[targetPath.length - 1]);
+        return;
+    }
+    const names = Object.keys(node.children).sort();
+    print(names.join("  "));
+}
+
+function cmd_cd(args) {
+    const dest = args[0] || `/home/${USERNAME}`;
+    const targetPath = resolvePath(dest);
+    const node = getNode(targetPath);
+    if (!node || node.type !== "dir") {
+        print(`bash: cd: ${dest}: No such file or directory`);
+        return;
+    }
+    cwd = targetPath;
+}
+
+function cmd_cat(args) {
+    if (!args[0]) {
+        print("cat: missing file operand");
+        return;
+    }
+    const targetPath = resolvePath(args[0]);
+    const node = getNode(targetPath);
+    if (!node) {
+        print(`cat: ${args[0]}: No such file or directory`);
+        return;
+    }
+    if (node.type !== "file") {
+        print(`cat: ${args[0]}: Is a directory`);
+        return;
+    }
+    print(node.content);
+}
+
+function cmd_echo(args) {
+    print(args.join(" "));
+}
+
+function cmd_whoami() {
+    print(USERNAME);
+}
+
+function cmd_uname(args) {
+    if (args.length && args[0] === "-a") {
+        print(`NotoriousOS blackwire 1.0 #1337 SMP x86_64 GNU/Linux`);
+    } else {
+        print("NotoriousOS");
+    }
+}
+
+function cmd_clear() {
+    termEl.textContent = "";
+}
+
+function cmd_mkdir(args) {
+    if (!args[0]) {
+        print("mkdir: missing operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    if (parent.children[name]) {
+        print(`mkdir: cannot create directory '${name}': File exists`);
+        return;
+    }
+    parent.children[name] = { type: "dir", children: {} };
+}
+
+function cmd_touch(args) {
+    if (!args[0]) {
+        print("touch: missing file operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    if (!parent.children[name]) {
+        parent.children[name] = { type: "file", content: "" };
+    }
+}
+
+function cmd_rm(args) {
+    if (!args[0]) {
+        print("rm: missing operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    const node = parent.children[name];
+    if (!node) {
+        print(`rm: cannot remove '${name}': No such file`);
+        return;
+    }
+    if (node.type === "dir") {
+        print(`rm: cannot remove '${name}': Is a directory`);
+        return;
+    }
+    delete parent.children[name];
+}
+
+function cmd_rmdir(args) {
+    if (!args[0]) {
+        print("rmdir: missing operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    const node = parent.children[name];
+    if (!node) {
+        print(`rmdir: failed to remove '${name}': No such file or directory`);
+        return;
+    }
+    if (node.type !== "dir") {
+        print(`rmdir: failed to remove '${name}': Not a directory`);
+        return;
+    }
+    if (Object.keys(node.children).length > 0) {
+        print(`rmdir: failed to remove '${name}': Directory not empty`);
+        return;
+    }
+    delete parent.children[name];
+}
+
+/* ========= COMMAND DISPATCH ========= */
+
+function runCommand(line) {
+    if (!line.trim()) return;
+
+    history.push(line);
+    historyIndex = history.length;
+
+    const parts = line.trim().split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1);
+
+    switch (cmd) {
+        case "help":      cmd_help(); break;
+        case "pwd":       cmd_pwd(); break;
+        case "ls":        cmd_ls(args); break;
+        case "cd":        cmd_cd(args); break;
+        case "cat":       cmd_cat(args); break;
+        case "echo":      cmd_echo(args); break;
+        case "whoami":    cmd_whoami(); break;
+        case "uname":     cmd_uname(args); break;
+        case "clear":     cmd_clear(); break;
+        case "mkdir":     cmd_mkdir(args); break;
+        case "touch":     cmd_touch(args); break;
+        case "rm":        cmd_rm(args); break;
+        case "rmdir":     cmd_rmdir(args); break;
+        default:
+            print(`bash: ${cmd}: command not found`);
+    }
+}
+
+/* ========= INPUT HANDLING ========= */
+
+cmdEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        const input = cmdEl.value;
+        const currentPrompt = promptEl.textContent;
+        print(currentPrompt + input);
+        runCommand(input);
+        cmdEl.value = "";
+        updatePrompt();
+    } else if (e.key === "ArrowUp") {
+        if (history.length === 0) return;
+        if (historyIndex > 0) historyIndex--;
+        cmdEl.value = history[historyIndex] || "";
+        e.preventDefault();
+    } else if (e.key === "ArrowDown") {
+        if (history.length === 0) return;
+        if (historyIndex < history.length - 1) {
+            historyIndex++;
+            cmdEl.value = history[historyIndex];
+        } else {
+            historyIndex = history.length;
+            cmdEl.value = "";
+        }
+        e.preventDefault();
+    }
+});
+
+/* ========= INIT ========= */
+
+function init() {
+    print(`NotoriousOS (simulated Linux terminal)
+Type 'help' for available commands.
+
+`);
+    updatePrompt();
+    cmdEl.focus();
+}
+
+init();
+</script>
+</body>
+</html>
+
