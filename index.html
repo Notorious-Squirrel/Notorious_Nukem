@@ -51,27 +51,47 @@ body {
     color: #00ff9c;
 }
 
-/* Scratch panel overlay */
+/* Scratch panel – this is the hidden message area under the foil */
 .scratch-panel {
     position: absolute;
     top: 1.5%;
     left: 75%;
     transform: translateX(-50%);
-    width: 350px;         /* matches billboard width */
-    height: 145px;        /* adjust to preference */
+    width: 350px;
+    height: 145px;
     background: #111;
     background-image:
         repeating-linear-gradient(
             135deg,
-            rgba(255,255,255,0.1) 0px,
-            rgba(255,255,255,0.1) 2px,
+            rgba(255,255,255,0.05) 0px,
+            rgba(255,255,255,0.05) 2px,
             rgba(0,0,0,0.0) 2px,
             rgba(0,0,0,0.0) 5px
         );
     border-radius: 6px;
-    opacity: 0.9;
-    z-index: 2;           /* sits ABOVE logo */
-    pointer-events: none; /* makes sure clicks pass through */
+    opacity: 1;
+    z-index: 2;  /* below the scratch canvas */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    box-sizing: border-box;
+    text-align: center;
+    color: #e7ffff;
+    font-size: 0.8rem;
+}
+
+/* Scratch-off canvas overlay */
+#scratch-canvas {
+    position: absolute;
+    top: 1.5%;
+    left: 75%;
+    transform: translateX(-50%);
+    width: 350px;
+    height: 145px;
+    z-index: 3;       /* above the scratch-panel */
+    touch-action: none;
+    cursor: pointer;
 }
 
 /* Small “press start” prompt */
@@ -83,7 +103,7 @@ body {
     font-size: 0.9rem;
     text-shadow: 0 0 6px #00f0ff;
     animation: blink 1s steps(2, start) infinite;
-    z-index: 3;
+    z-index: 4;
 }
 
 @keyframes blink {
@@ -164,8 +184,16 @@ body {
         <span class="symbol">¤</span> NOTORIOUS NUKEM
     </div>
 
-    <!-- Scratch overlay panel on top of billboard -->
-    <div class="scratch-panel"></div>
+    <!-- Scratch panel with hidden message -->
+    <div class="scratch-panel">
+        <!-- Put your secret / flag / hint here -->
+        TOP-SECRET BRIEFING:
+        <br>
+        "NEXUS ENTRY CODE IS FLAG{S5-OMEGA}"
+    </div>
+
+    <!-- Scratchable foil layer on top -->
+    <canvas id="scratch-canvas"></canvas>
 
     <div class="press-start">PRESS START TO SPAWN</div>
 
@@ -202,5 +230,81 @@ body {
 
 </div>
 
-</body>
-</html>
+<!-- Scratch-off behaviour -->
+<script>
+(function () {
+    const canvas = document.getElementById('scratch-canvas');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        // Fill with "foil" layer
+        ctx.globalCompositeOperation = 'source-over';
+        const gradient = ctx.createLinearGradient(0, 0, rect.width, rect.height);
+        gradient.addColorStop(0, '#b0b0b0');
+        gradient.addColorStop(0.5, '#f0f0f0');
+        gradient.addColorStop(1, '#a0a0a0');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, rect.width, rect.height);
+
+        // Diagonal streaks to look more scratch-card like
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1;
+        for (let i = -rect.height; i < rect.width; i += 8) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i + rect.height, rect.height);
+            ctx.stroke();
+        }
+    }
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    let scratching = false;
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        let x, y;
+        if (e.touches && e.touches.length > 0) {
+            x = e.touches[0].clientX;
+            y = e.touches[0].clientY;
+        } else {
+            x = e.clientX;
+            y = e.clientY;
+        }
+        return {
+            x: x - rect.left,
+            y: y - rect.top
+        };
+    }
+
+    function scratch(e) {
+        if (!scratching) return;
+        e.preventDefault();
+        const pos = getPos(e);
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    canvas.addEventListener('mousedown', function (e) {
+        scratching = true;
+        scratch(e);
+    });
+    window.addEventListener('mouseup', function () {
+        scratching = false;
+    });
+    canvas.addEventListener('mousemove', scratch);
+
+    canvas.addEventListener('touchstart', function (e) {
+        scratching = true;
+        scratch(e);
+    }, { passive: false });
+    window.
