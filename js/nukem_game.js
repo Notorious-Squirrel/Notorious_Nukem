@@ -150,13 +150,15 @@ function isLadderAt(x, y) {
 class Player {
     constructor() {
         this.startX = 50;
-        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE;
+        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE - 1;   // <-- change here
 
         this.x = this.startX;
         this.y = this.startY;
         this.w = 24;
         this.h = 32;
-
+        ...
+    }
+}
         this.velX = 0;
         this.velY = 0;
         this.accel = 0.6;
@@ -178,13 +180,15 @@ class Player {
         this.invincibleTimer = 0;
     }
 
-    reset() {
-        this.x = this.startX;
-        this.y = this.startY;
-        this.velX = 0;
-        this.velY = 0;
-        this.health = 3;
-        this.invincibleTimer = 0;
+   reset() {
+       this.x = this.startX;
+       this.y = this.startY;   // already fine, startY now has the -1
+       this.velX = 0;
+       this.velY = 0;
+       this.health = 3;
+       this.invincibleTimer = 0;
+}
+
     }
 
     update() {
@@ -296,16 +300,20 @@ class Player {
         if (cameraX > maxCam) cameraX = maxCam;
     }
 
-    collides() {
-        const x1 = this.x;
-        const y1 = this.y;
-        const x2 = this.x + this.w;
-        const y2 = this.y + this.h;
-        return (
-            isSolidAt(x1, y1) ||
-            isSolidAt(x2, y1) ||
-            isSolidAt(x1, y2) ||
-            isSolidAt(x2, y2)
+   collides() {
+       const x1 = this.x + 2;
+       const y1 = this.y + 2;
+       const x2 = this.x + this.w - 2;
+       const y2 = this.y + this.h - 1;  // note the -1 on the bottom
+
+    return (
+        isSolidAt(x1, y1) ||
+        isSolidAt(x2, y1) ||
+        isSolidAt(x1, y2) ||
+        isSolidAt(x2, y2)
+    );
+}
+
         );
     }
 
