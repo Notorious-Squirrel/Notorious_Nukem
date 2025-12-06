@@ -1,14 +1,15 @@
 /* ============================================================
    NOTORIOUS NUKEM SQUIRREL – HOLLYWOOD HOLLOWCAST LEVEL
-   Full Game Script (Canvas + JS)
+   Full Game Script (Canvas + JS) WITH LEFT-FACING ENEMY SPRITES
    ------------------------------------------------------------
-   Requires:
-   /assets/nukem_run.png
-   /assets/nukem_jump.png
-   /assets/nukem_climb.png
-   /assets/nukem_shoot.png
+   Requires (in /assets):
+   nukem_run.png
+   nukem_jump.png
+   nukem_climb.png
+   nukem_shoot.png
+   enemy_goon.png      <-- LEFT-FACING, 4 frames, 1 row
    Optional:
-   /assets/bg_city.png
+   bg_city.png
    ============================================================ */
 
 const canvas = document.getElementById("game");
@@ -31,7 +32,7 @@ const TILE_SIZE = 16;
 const LEVEL_HEIGHT = 15;
 const LEVEL_WIDTH = 120;
 
-// Number of frames per sprite sheet
+// Player sprite frames
 const SPRITE_FRAMES = {
     run: 6,
     jump: 4,
@@ -39,10 +40,14 @@ const SPRITE_FRAMES = {
     shoot: 4
 };
 
+// Enemy sprite config (enemy_goon.png)
+const ENEMY_FRAMES = 4;     // frames across
+const ENEMY_ANIM_SPEED = 8; // lower = faster
+
 let cameraX = 0;
 
 /* ------------------------------------------------------------
-   SPRITE LOADING
+   SPRITES
 ------------------------------------------------------------ */
 const sprites = {
     run: new Image(),
@@ -56,19 +61,23 @@ sprites.jump.src  = "assets/nukem_jump.png";
 sprites.climb.src = "assets/nukem_climb.png";
 sprites.shoot.src = "assets/nukem_shoot.png";
 
+// LEFT-FACING enemy sheet
+const enemySprite = new Image();
+enemySprite.src = "assets/enemy_goon.png";
+
 // Optional city background
 const bgCity = new Image();
 bgCity.src = "assets/bg_city.png";
 
 /* ------------------------------------------------------------
-   LEVEL GENERATION (Hollywood-inspired)
+   LEVEL (Hollywood-style streets / rooftops)
 ------------------------------------------------------------ */
 
 const level = [];
 for (let y = 0; y < LEVEL_HEIGHT; y++) {
     level[y] = [];
     for (let x = 0; x < LEVEL_WIDTH; x++) {
-        level[y][x] = 0; // empty
+        level[y][x] = 0;
     }
 }
 
@@ -119,12 +128,15 @@ function isLadderAt(x, y) {
 }
 
 /* ------------------------------------------------------------
-   PLAYER CLASS
+   PLAYER
 ------------------------------------------------------------ */
 class Player {
     constructor() {
-        this.x = 50;
-        this.y = (LEVEL_HEIGHT - 3) * TILE_SIZE;
+        this.startX = 50;
+        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE;
+
+        this.x = this.startX;
+        this.y = this.startY;
         this.w = 24;
         this.h = 32;
 
@@ -135,7 +147,7 @@ class Player {
         this.jumpForce = -11;
         this.gravity = 0.6;
 
-        this.facing = 1;
+        this.facing = 1;    // 1 = right, -1 = left
         this.grounded = false;
         this.onLadder = false;
 
@@ -144,9 +156,23 @@ class Player {
         this.frameTick = 0;
 
         this.shootCooldown = 0;
+
+        this.health = 3;
+        this.invincibleTimer = 0;
+    }
+
+    reset() {
+        this.x = this.startX;
+        this.y = this.startY;
+        this.velX = 0;
+        this.velY = 0;
+        this.health = 3;
+        this.invincibleTimer = 0;
     }
 
     update() {
+        if (this.invincibleTimer > 0) this.invincibleTimer--;
+
         this.handleInput();
         this.applyPhysics();
         this.updateAnimation();
@@ -186,7 +212,7 @@ class Player {
             this.state = "jump";
         }
 
-        // Ladder climbing
+        // Ladder climb
         if (this.onLadder) {
             if (keys["ArrowUp"]) {
                 this.velY = -2;
@@ -199,7 +225,7 @@ class Player {
             }
         }
 
-        // Shooting
+        // Shoot
         if ((keys["x"] || keys["X"]) && this.shootCooldown <= 0) {
             this.state = "shoot";
             bullets.spawn(
@@ -212,7 +238,7 @@ class Player {
 
         if (this.shootCooldown > 0) this.shootCooldown--;
 
-        // Running / idle states
+        // State if not climbing / shooting
         if (!this.onLadder && this.grounded && this.state !== "shoot") {
             if (!this.grounded) this.state = "jump";
             else if (moving) this.state = "run";
@@ -225,14 +251,14 @@ class Player {
             this.velY += this.gravity;
         }
 
-        // Horizontal movement
+        // Horizontal
         this.x += this.velX;
         if (this.collides()) {
             this.x -= this.velX;
             this.velX = 0;
         }
 
-        // Vertical movement
+        // Vertical
         this.y += this.velY;
         this.grounded = false;
         if (this.collides()) {
@@ -241,12 +267,12 @@ class Player {
             this.velY = 0;
         }
 
-        // Clamp bounds
+        // Bounds
         if (this.x < 0) this.x = 0;
         const maxX = LEVEL_WIDTH * TILE_SIZE - this.w;
         if (this.x > maxX) this.x = maxX;
 
-        // Camera follow
+        // Camera
         cameraX = this.x - canvas.width / 2;
         if (cameraX < 0) cameraX = 0;
         const maxCam = LEVEL_WIDTH * TILE_SIZE - canvas.width;
@@ -266,6 +292,23 @@ class Player {
         );
     }
 
+    takeDamage(fromX) {
+        if (this.invincibleTimer > 0) return;
+        this.health--;
+        this.invincibleTimer = 60;
+
+        // Knock-back
+        if (fromX < this.x) this.velX = 3;
+        else this.velX = -3;
+        this.velY = -4;
+
+        if (this.health <= 0) {
+            alert("Game Over – Nukem Squirrel got toasted!");
+            this.reset();
+            resetEnemies();
+        }
+    }
+
     updateAnimation() {
         this.frameTick++;
         const speed = (this.state === "run") ? 4 : 6;
@@ -276,37 +319,27 @@ class Player {
     }
 
     draw() {
+        // Flicker when hit
+        if (this.invincibleTimer > 0 &&
+            (Math.floor(this.invincibleTimer / 4) % 2 === 0)) {
+            return;
+        }
+
         let img = sprites.run;
         let frames = SPRITE_FRAMES.run;
 
         switch (this.state) {
-            case "run":
-                img = sprites.run;
-                frames = SPRITE_FRAMES.run;
-                break;
-            case "jump":
-                img = sprites.jump;
-                frames = SPRITE_FRAMES.jump;
-                break;
-            case "climb":
-                img = sprites.climb;
-                frames = SPRITE_FRAMES.climb;
-                break;
-            case "shoot":
-                img = sprites.shoot;
-                frames = SPRITE_FRAMES.shoot;
-                break;
-            default:
-                img = sprites.run;
-                frames = SPRITE_FRAMES.run;
-                break;
+            case "run":   img = sprites.run;   frames = SPRITE_FRAMES.run;   break;
+            case "jump":  img = sprites.jump;  frames = SPRITE_FRAMES.jump;  break;
+            case "climb": img = sprites.climb; frames = SPRITE_FRAMES.climb; break;
+            case "shoot": img = sprites.shoot; frames = SPRITE_FRAMES.shoot; break;
+            default:      img = sprites.run;   frames = SPRITE_FRAMES.run;   break;
         }
 
         if (!img.complete || img.width === 0) return;
 
         const frameWidth = img.width / frames;
         const frameIndex = this.state === "idle" ? 0 : (this.frame % frames);
-
         const sx = frameWidth * frameIndex;
         const dx = worldToScreen(this.x);
 
@@ -322,7 +355,6 @@ class Player {
             sx, 0, frameWidth, img.height,
             dx, this.y, this.w, this.h
         );
-
         ctx.restore();
     }
 }
@@ -330,12 +362,134 @@ class Player {
 const player = new Player();
 
 /* ------------------------------------------------------------
+   ENEMIES – LEFT-FACING SPRITE SHEET
+------------------------------------------------------------ */
+class Enemy {
+    constructor(x, y, leftBound, rightBound) {
+        this.x = x;
+        this.y = y;
+        this.w = 24;
+        this.h = 30;
+
+        this.leftBound = leftBound;
+        this.rightBound = rightBound;
+        this.vx = -1.2; // negative so they tend to walk LEFT (from right side)
+
+        this.alive = true;
+        this.hp = 2;
+
+        this.frame = 0;
+        this.frameTick = 0;
+    }
+
+    update() {
+        if (!this.alive) return;
+
+        this.x += this.vx;
+
+        // Patrol bounds
+        if (this.x < this.leftBound) {
+            this.x = this.leftBound;
+            this.vx *= -1;
+        }
+        if (this.x + this.w > this.rightBound) {
+            this.x = this.rightBound - this.w;
+            this.vx *= -1;
+        }
+
+        // Stay on platform
+        const feetX = this.x + this.w / 2;
+        const feetY = this.y + this.h + 1;
+        if (!isSolidAt(feetX, feetY)) {
+            this.x -= this.vx * 2;
+            this.vx *= -1;
+        }
+
+        // Animate
+        this.frameTick++;
+        if (this.frameTick >= ENEMY_ANIM_SPEED) {
+            this.frameTick = 0;
+            this.frame = (this.frame + 1) % ENEMY_FRAMES;
+        }
+
+        this.draw();
+    }
+
+    draw() {
+        if (!this.alive) return;
+
+        if (!enemySprite.complete || enemySprite.width === 0) {
+            // Fallback box while loading
+            const dxBox = worldToScreen(this.x);
+            ctx.fillStyle = "#ff3366";
+            ctx.fillRect(dxBox, this.y, this.w, this.h);
+            return;
+        }
+
+        const frameWidth = enemySprite.width / ENEMY_FRAMES;
+        const sx = frameWidth * this.frame;
+        const dx = worldToScreen(this.x);
+
+        ctx.save();
+        // Art is LEFT-facing by default (towards decreasing x)
+        const movingRight = this.vx > 0;
+        if (movingRight) {
+            // Flip horizontally so they face right when moving right
+            ctx.translate(dx + this.w / 2, 0);
+            ctx.scale(-1, 1);
+            ctx.translate(-dx - this.w / 2, 0);
+        }
+
+        ctx.drawImage(
+            enemySprite,
+            sx, 0, frameWidth, enemySprite.height,
+            dx, this.y, this.w, this.h
+        );
+        ctx.restore();
+    }
+
+    hit() {
+        if (!this.alive) return;
+        this.hp--;
+        if (this.hp <= 0) this.alive = false;
+    }
+
+    getHitbox() {
+        return { x: this.x, y: this.y, w: this.w, h: this.h };
+    }
+}
+
+let enemies = [];
+
+function spawnEnemies() {
+    enemies = [
+        // Street goon, coming in from the right side of the cinema area
+        new Enemy(26 * TILE_SIZE, (LEVEL_HEIGHT - 3) * TILE_SIZE - 12,
+                  12 * TILE_SIZE, 28 * TILE_SIZE),
+
+        // Rooftop left
+        new Enemy(14 * TILE_SIZE, (LEVEL_HEIGHT - 6) * TILE_SIZE - 14,
+                  5 * TILE_SIZE, 15 * TILE_SIZE),
+
+        // Rooftop right
+        new Enemy(38 * TILE_SIZE, (LEVEL_HEIGHT - 6) * TILE_SIZE - 14,
+                  28 * TILE_SIZE, 40 * TILE_SIZE)
+    ];
+}
+
+function resetEnemies() {
+    spawnEnemies();
+}
+
+spawnEnemies();
+
+/* ------------------------------------------------------------
    BULLETS
 ------------------------------------------------------------ */
 const bullets = {
     list: [],
     spawn(x, y, dir) {
-        this.list.push({ x, y, vx: 6 * dir, life: 60 });
+        this.list.push({ x, y, vx: 6 * dir, life: 60, w: 4, h: 2 });
     },
     updateAndDraw() {
         for (let i = this.list.length - 1; i >= 0; i--) {
@@ -343,25 +497,68 @@ const bullets = {
             b.x += b.vx;
             b.life--;
 
+            let remove = false;
+
+            // Hit wall
             if (
                 b.life <= 0 ||
                 isSolidAt(b.x, b.y) ||
                 b.x < 0 ||
                 b.x > LEVEL_WIDTH * TILE_SIZE
             ) {
+                remove = true;
+            }
+
+            // Hit enemy
+            if (!remove) {
+                for (const enemy of enemies) {
+                    if (!enemy.alive) continue;
+                    const hb = enemy.getHitbox();
+                    if (
+                        b.x < hb.x + hb.w &&
+                        b.x + b.w > hb.x &&
+                        b.y < hb.y + hb.h &&
+                        b.y + b.h > hb.y
+                    ) {
+                        enemy.hit();
+                        remove = true;
+                        break;
+                    }
+                }
+            }
+
+            if (remove) {
                 this.list.splice(i, 1);
                 continue;
             }
 
             const dx = worldToScreen(b.x);
             ctx.fillStyle = "#ffdd55";
-            ctx.fillRect(dx, b.y, 4, 2);
+            ctx.fillRect(dx, b.y, b.w, b.h);
         }
     }
 };
 
 /* ------------------------------------------------------------
-   RENDERING – BACKGROUND + TILES
+   PLAYER–ENEMY COLLISIONS
+------------------------------------------------------------ */
+function checkPlayerEnemyCollisions() {
+    for (const enemy of enemies) {
+        if (!enemy.alive) continue;
+        const hb = enemy.getHitbox();
+        if (
+            player.x < hb.x + hb.w &&
+            player.x + player.w > hb.x &&
+            player.y < hb.y + hb.h &&
+            player.y + player.h > hb.y
+        ) {
+            player.takeDamage(hb.x);
+        }
+    }
+}
+
+/* ------------------------------------------------------------
+   RENDERING – BACKGROUND, TILES, HUD
 ------------------------------------------------------------ */
 function drawBackground() {
     if (bgCity.complete && bgCity.width > 0) {
@@ -400,7 +597,6 @@ function drawTiles() {
 
             const screenX = worldToScreen(x * TILE_SIZE);
             const screenY = y * TILE_SIZE;
-
             if (screenX > canvas.width || screenX + TILE_SIZE < 0) continue;
 
             if (tile === 1) {
@@ -408,9 +604,7 @@ function drawTiles() {
                 ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = (y >= LEVEL_HEIGHT - 2) ? "#303040" : "#34345a";
                 ctx.fillRect(screenX, screenY + TILE_SIZE - 4, TILE_SIZE, 4);
-            }
-
-            if (tile === 2) {
+            } else if (tile === 2) {
                 ctx.fillStyle = "#22f0ff";
                 ctx.fillRect(screenX + TILE_SIZE / 2 - 2, screenY, 4, TILE_SIZE);
                 ctx.fillRect(screenX + 2, screenY + 4, TILE_SIZE - 4, 2);
@@ -420,8 +614,16 @@ function drawTiles() {
     }
 }
 
+function drawHUD() {
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "10px monospace";
+    ctx.fillText("HEALTH: " + player.health, 8, 16);
+    ctx.restore();
+}
+
 /* ------------------------------------------------------------
-   GAME LOOP
+   MAIN LOOP
 ------------------------------------------------------------ */
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -429,7 +631,10 @@ function gameLoop() {
     drawBackground();
     drawTiles();
     bullets.updateAndDraw();
+    for (const enemy of enemies) enemy.update();
     player.update();
+    checkPlayerEnemyCollisions();
+    drawHUD();
 
     requestAnimationFrame(gameLoop);
 }
