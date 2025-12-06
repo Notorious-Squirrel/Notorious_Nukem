@@ -149,13 +149,16 @@ function isLadderAt(x, y) {
 ------------------------------------------------------------ */
 class Player {
     constructor() {
+        // Set size first
+        this.w = 24;
+        this.h = 32;
+
+        // Start position – stand ON the cinema canopy (LEVEL_HEIGHT - 3 row)
         this.startX = 50;
-        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE - 1; // one pixel above platform
+        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE - this.h;
 
         this.x = this.startX;
         this.y = this.startY;
-        this.w = 24;
-        this.h = 32;
 
         this.velX = 0;
         this.velY = 0;
