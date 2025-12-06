@@ -72,9 +72,9 @@ sprites.jump.onload  = () => console.log("JUMP loaded",  sprites.jump.width,  sp
 sprites.climb.onload = () => console.log("CLIMB loaded", sprites.climb.width, sprites.climb.height);
 sprites.shoot.onload = () => console.log("SHOOT loaded", sprites.shoot.width, sprites.shoot.height);
 
-// Only log hard failures for non-jump to avoid spam
+// Optional: log failures
 sprites.run.onerror   = () => console.error("RUN failed to load");
-// sprites.jump.onerror  = () => console.error("JUMP failed to load"); // soft-fail, we fall back
+sprites.jump.onerror  = () => console.error("JUMP failed to load");
 sprites.climb.onerror = () => console.error("CLIMB failed to load");
 sprites.shoot.onerror = () => console.error("SHOOT failed to load");
 
@@ -150,15 +150,13 @@ function isLadderAt(x, y) {
 class Player {
     constructor() {
         this.startX = 50;
-        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE - 1;   // <-- change here
+        this.startY = (LEVEL_HEIGHT - 3) * TILE_SIZE - 1; // one pixel above platform
 
         this.x = this.startX;
         this.y = this.startY;
         this.w = 24;
         this.h = 32;
-        ...
-    }
-}
+
         this.velX = 0;
         this.velY = 0;
         this.accel = 0.6;
@@ -180,15 +178,13 @@ class Player {
         this.invincibleTimer = 0;
     }
 
-   reset() {
-       this.x = this.startX;
-       this.y = this.startY;   // already fine, startY now has the -1
-       this.velX = 0;
-       this.velY = 0;
-       this.health = 3;
-       this.invincibleTimer = 0;
-}
-
+    reset() {
+        this.x = this.startX;
+        this.y = this.startY;
+        this.velX = 0;
+        this.velY = 0;
+        this.health = 3;
+        this.invincibleTimer = 0;
     }
 
     update() {
@@ -300,20 +296,18 @@ class Player {
         if (cameraX > maxCam) cameraX = maxCam;
     }
 
-   collides() {
-       const x1 = this.x + 2;
-       const y1 = this.y + 2;
-       const x2 = this.x + this.w - 2;
-       const y2 = this.y + this.h - 1;  // note the -1 on the bottom
+    collides() {
+        // Slightly shrink hitbox so feet aren’t "inside" the tile
+        const x1 = this.x + 2;
+        const y1 = this.y + 2;
+        const x2 = this.x + this.w - 2;
+        const y2 = this.y + this.h - 1;
 
-    return (
-        isSolidAt(x1, y1) ||
-        isSolidAt(x2, y1) ||
-        isSolidAt(x1, y2) ||
-        isSolidAt(x2, y2)
-    );
-}
-
+        return (
+            isSolidAt(x1, y1) ||
+            isSolidAt(x2, y1) ||
+            isSolidAt(x1, y2) ||
+            isSolidAt(x2, y2)
         );
     }
 
