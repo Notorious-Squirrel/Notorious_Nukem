@@ -192,7 +192,7 @@ body {
         "NEXUS ENTRY CODE IS FLAG{S5-OMEGA}"
     </div>
 
-    <!-- Scratchable foil layer on top -->
+    <!-- Scratchable image layer on top -->
     <canvas id="scratch-canvas"></canvas>
 
     <div class="press-start">PRESS START TO SPAWN</div>
@@ -238,33 +238,26 @@ body {
 
     const ctx = canvas.getContext('2d');
 
-    function resizeCanvas() {
+    // Image used as the top scratch layer
+    const foilImage = new Image();
+    foilImage.src = 'nukemsuirrel.png';
+
+    function drawFoil() {
         const rect = canvas.getBoundingClientRect();
         canvas.width = rect.width;
         canvas.height = rect.height;
 
-        // Fill with "foil" layer
-        ctx.globalCompositeOperation = 'source-over';
-        const gradient = ctx.createLinearGradient(0, 0, rect.width, rect.height);
-        gradient.addColorStop(0, '#b0b0b0');
-        gradient.addColorStop(0.5, '#f0f0f0');
-        gradient.addColorStop(1, '#a0a0a0');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, rect.width, rect.height);
-
-        // Diagonal streaks to look more scratch-card like
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth = 1;
-        for (let i = -rect.height; i < rect.width; i += 8) {
-            ctx.beginPath();
-            ctx.moveTo(i, 0);
-            ctx.lineTo(i + rect.height, rect.height);
-            ctx.stroke();
+        if (!foilImage.complete) {
+            return;
         }
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.drawImage(foilImage, 0, 0, rect.width, rect.height);
     }
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    foilImage.onload = drawFoil;
+    window.addEventListener('resize', drawFoil);
 
     let scratching = false;
 
@@ -298,13 +291,30 @@ body {
         scratching = true;
         scratch(e);
     });
+
     window.addEventListener('mouseup', function () {
         scratching = false;
     });
+
     canvas.addEventListener('mousemove', scratch);
 
     canvas.addEventListener('touchstart', function (e) {
         scratching = true;
         scratch(e);
     }, { passive: false });
-    window.
+
+    window.addEventListener('touchend', function () {
+        scratching = false;
+    });
+
+    canvas.addEventListener('touchmove', scratch, { passive: false });
+
+    // Initial draw in case image loads from cache
+    if (foilImage.complete) {
+        drawFoil();
+    }
+})();
+</script>
+
+</body>
+</html>
