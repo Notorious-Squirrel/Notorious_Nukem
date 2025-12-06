@@ -9,7 +9,183 @@ html, body {
     margin: 0;
     padding: 0;
     height: 100%;
+}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Notorious Nukem – Home Hub</title>
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
 }
+
+body {
+    background: #000;
+    font-family: "Press Start 2P", monospace, system-ui;
+    color: #bffcff;
+}
+
+/* Full-screen hub area */
+.hub {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: url("business_center_bg.png") no-repeat center/cover;
+}
+
+/* Neon title billboard at the top */
+.logo {
+    position: absolute;
+    top: 3%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    font-size: 2.2rem;
+    letter-spacing: 0.12em;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.65);
+    border: 4px solid #00f0ff;
+    box-shadow:
+        0 0 10px #00f0ff,
+        0 0 25px #00aaff,
+        0 0 40px #0077ff;
+}
+
+.logo span.symbol {
+    margin-right: 12px;
+    color: #00ff9c;
+}
+
+/* Small “press start” prompt */
+.press-start {
+    position: absolute;
+    top: 16%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    text-shadow: 0 0 6px #00f0ff;
+    animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+/* Shared styling for menu hotspots */
+.menu-node {
+    position: absolute;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #00ffc3;
+    text-decoration: none;
+    color: #e7ffff;
+    box-shadow: 0 0 6px #00ffc3;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.menu-node::before {
+    content: "■ ";
+    color: #ffeb3b;
+}
+
+.menu-node:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 12px #00ffc3;
+}
+
+/* Platform placements (adjust percentages to line up with tiles) */
+
+/* Mid-level – left to right */
+#start-game {
+    bottom: 48%;
+    left: 12%;
+}
+
+#training {
+    bottom: 48%;
+    left: 38%;
+}
+
+#load-game {
+    bottom: 48%;
+    left: 64%;
+}
+
+/* Ground level */
+#arsenal {
+    bottom: 14%;
+    left: 18%;
+}
+
+#options {
+    bottom: 14%;
+    left: 44%;
+}
+
+#credits {
+    bottom: 14%;
+    left: 70%;
+}
+
+/* High right platform */
+#extras {
+    bottom: 62%;
+    right: 8%;
+}
+</style>
+</head>
+<body>
+
+<div class="hub">
+
+    <div class="logo">
+        <span class="symbol">¤</span> NOTORIOUS NUKEM
+    </div>
+
+    <div class="press-start">PRESS START TO SPAWN</div>
+
+    <!-- Mid-level “Duke Nukem” style platforms -->
+    <a href="#start" class="menu-node" id="start-game">
+        Mission Briefing – Start Game
+    </a>
+
+    <a href="#training" class="menu-node" id="training">
+        Combat Sim – Training
+    </a>
+
+    <a href="#load" class="menu-node" id="load-game">
+        Data Vault – Load / Continue
+    </a>
+
+    <!-- Ground level props -->
+    <a href="#arsenal" class="menu-node" id="arsenal">
+        Weapons Crate – Arsenal
+    </a>
+
+    <a href="#options" class="menu-node" id="options">
+        Locker Room – Options
+    </a>
+
+    <a href="#credits" class="menu-node" id="credits">
+        Neon Alley – Credits
+    </a>
+
+    <!-- High right platform / secret area -->
+    <a href="#extras" class="menu-node" id="extras">
+        Roof Laptop – Extras / CTF Codes
+    </a>
+
+</div>
+
+</body>
+</html>
+
 
 body {
     background: #000;
