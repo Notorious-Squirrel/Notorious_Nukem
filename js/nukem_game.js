@@ -22,8 +22,14 @@ canvas.height = 270;
    INPUT
 ------------------------------------------------------------ */
 const keys = {};
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup",   e => keys[e.key] = false);
+document.addEventListener("keydown", e => {
+    console.log("key:", e.key);   // debug so you can see arrows firing
+    keys[e.key] = true;
+});
+document.addEventListener("keyup",   e => {
+    keys[e.key] = false;
+});
+
 
 /* ------------------------------------------------------------
    CONFIG + GLOBALS
