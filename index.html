@@ -43,11 +43,35 @@ body {
         0 0 10px #b84dff,
         0 0 25px #8a2be2,
         0 0 40px #6a00ff;
+    z-index: 1;
 }
 
 .logo span.symbol {
     margin-right: 12px;
     color: #00ff9c;
+}
+
+/* Scratch panel overlay */
+.scratch-panel {
+    position: absolute;
+    top: 3%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 460px;         /* matches billboard width */
+    height: 135px;        /* adjust to preference */
+    background: #111;
+    background-image:
+        repeating-linear-gradient(
+            135deg,
+            rgba(255,255,255,0.1) 0px,
+            rgba(255,255,255,0.1) 2px,
+            rgba(0,0,0,0.0) 2px,
+            rgba(0,0,0,0.0) 5px
+        );
+    border-radius: 6px;
+    opacity: 0.9;
+    z-index: 2;           /* sits ABOVE logo */
+    pointer-events: none; /* makes sure clicks pass through */
 }
 
 /* Small “press start” prompt */
@@ -59,6 +83,7 @@ body {
     font-size: 0.9rem;
     text-shadow: 0 0 6px #00f0ff;
     animation: blink 1s steps(2, start) infinite;
+    z-index: 3;
 }
 
 @keyframes blink {
@@ -134,9 +159,13 @@ body {
 
 <div class="hub">
 
+    <!-- Billboard text -->
     <div class="logo">
         <span class="symbol">¤</span> NOTORIOUS NUKEM
     </div>
+
+    <!-- Scratch overlay panel on top of billboard -->
+    <div class="scratch-panel"></div>
 
     <div class="press-start">PRESS START TO SPAWN</div>
 
