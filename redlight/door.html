@@ -23,35 +23,37 @@
       width:min(900px, 96vw);
       aspect-ratio: 1 / 1;
       position:relative;
+      z-index:0;
       border:1px solid rgba(255,255,255,0.06);
       border-radius:16px;
       overflow:hidden;
 
-  /* Background image + overlays (image first, overlays on top) */
-  background-image:
-  url("redlightdoor.png"),
-  radial-gradient(1200px 700px at 50% 20%, rgba(255,60,80,0.08), transparent 55%),
-  linear-gradient(180deg, rgba(7,8,18,0.35), rgba(3,3,9,0.35));
+      /* Background image + overlays (image first, overlays on top) */
+      background-image:
+        url("redlightdoor.png"),
+        radial-gradient(1200px 700px at 50% 20%, rgba(255,60,80,0.08), transparent 55%),
+        linear-gradient(180deg, rgba(7,8,18,0.35), rgba(3,3,9,0.35));
 
-  background-size: cover, cover, cover;
-  background-position: center, center, center;
-  background-repeat: no-repeat, no-repeat, no-repeat;
+      background-size: cover, cover, cover;
+      background-position: center, center, center;
+      background-repeat: no-repeat, no-repeat, no-repeat;
 
-
-  .lamp{
-    position:absolute;
-    left:50%;
-    top:18%;
-    transform:translate(-50%, -50%);
-    width:220px;
-    height:120px;
-    display:grid;
-    place-items:center;
-    pointer-events:none;
-    filter: drop-shadow(0 0 10px rgba(var(--glow), 0.25));
-    z-index: 5; /* 👈 IMPORTANT */
+      box-shadow: 0 20px 80px rgba(0,0,0,0.55);
     }
 
+    /* Position the light above the door. Adjust left/top to match your picture */
+    .lamp{
+      position:absolute;
+      left:50%;
+      top:18%;
+      transform:translate(-50%, -50%);
+      width:220px;
+      height:120px;
+      display:grid;
+      place-items:center;
+      pointer-events:none;
+      filter: drop-shadow(0 0 10px rgba(var(--glow), 0.25));
+      z-index:5;
     }
 
     .housing{
@@ -59,7 +61,7 @@
       height:40px;
       border-radius:10px;
       background: linear-gradient(180deg, #141521, #0b0c14);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
       position:relative;
       display:flex;
@@ -71,11 +73,13 @@
       width:150px;
       height:14px;
       border-radius:8px;
-      background: rgba(var(--red), 0.15);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+      background: rgba(var(--red), 0.35);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow:
+        inset 0 0 0 1px rgba(0,0,0,0.25),
+        0 0 12px rgba(var(--glow), 0.25);
       transition: background 90ms linear, box-shadow 90ms linear, opacity 90ms linear;
-      opacity: 0.35;
+      opacity: 0.6;
     }
 
     .cone{
@@ -96,11 +100,11 @@
 
     .on .bulb{
       opacity: 1;
-      background: rgba(var(--red), 0.75);
+      background: rgba(var(--red), 0.95);
       box-shadow:
-        0 0 14px rgba(var(--glow), 0.55),
-        0 0 40px rgba(var(--glow), 0.25);
-      border-color: rgba(255,255,255,0.14);
+        0 0 18px rgba(var(--glow), 0.8),
+        0 0 60px rgba(var(--glow), 0.4);
+      border-color: rgba(255,255,255,0.22);
     }
     .on .cone{ opacity: 1; }
 
@@ -115,17 +119,18 @@
       color: rgba(190, 252, 255, 0.85);
       font-size: 12px;
       user-select:none;
+      z-index:6;
     }
 
-    /* ✅ THESE WERE IN THE WRONG PLACE BEFORE */
-    .signal-unlocked .bulb {
-      background: rgba(255, 90, 90, 0.95);
+    /* Visual confirmation when JSON payload is successfully fetched */
+    .signal-unlocked .bulb{
+      background: rgba(255, 90, 90, 0.98);
       box-shadow:
-        0 0 25px rgba(255, 60, 80, 0.9),
-        0 0 70px rgba(255, 60, 80, 0.45);
+        0 0 25px rgba(255, 60, 80, 0.95),
+        0 0 90px rgba(255, 60, 80, 0.5);
     }
-    .signal-unlocked .badge {
-      color: #ffb3ba;
+    .signal-unlocked .badge{
+      color:#ffb3ba;
       border-color: rgba(255,80,90,0.6);
     }
   </style>
@@ -139,13 +144,17 @@
       <div class="cone" id="cone"></div>
     </div>
 
-    <div class="badge">REDLIGHT // Morse beacon active</div>
+    <div class="badge" id="badge">REDLIGHT // Morse beacon active</div>
   </div>
 
 <script>
+/* =========================
+   MORSE BEACON
+   ========================= */
 const TEXT = "CHECK THE DEV TOOLS F12";
 const UNIT_MS = 120;
 const scene = document.getElementById("scene");
+const badge = document.getElementById("badge");
 
 const MORSE = {
   A: ".-",    B: "-...",  C: "-.-.",  D: "-..",   E: ".",
@@ -185,13 +194,22 @@ function buildTimeline(message){
   return out;
 }
 
+let beaconRunning = true;
+
 async function loopBeacon(){
   const timeline = buildTimeline(TEXT);
   lampOn(false);
   await sleep(UNIT_MS * 6);
 
   while(true){
+    if (!beaconRunning) {
+      lampOn(true); // lock-on when unlocked
+      await sleep(250);
+      continue;
+    }
+
     for (const step of timeline){
+      if (!beaconRunning) break;
       lampOn(step.on);
       await sleep(step.units * UNIT_MS);
     }
@@ -201,6 +219,62 @@ async function loopBeacon(){
 }
 
 loopBeacon();
+
+
+/* =========================
+   DEVTOOLS DETECT + HIDDEN JSON FETCH
+   Only runs when DevTools are open on refresh.
+   ========================= */
+const THRESHOLD = 160;
+
+// file to fetch (rename to something boring if you want)
+const HIDDEN_JSON = "cdn-manifest.json";
+
+function devToolsOpen(){
+  return (
+    window.outerWidth - window.innerWidth > THRESHOLD ||
+    window.outerHeight - window.innerHeight > THRESHOLD
+  );
+}
+
+async function fetchHiddenJSON(){
+  try {
+    const url = `${HIDDEN_JSON}?ts=${Date.now()}`; // cache-bust so it shows in Network
+    const res = await fetch(url, { cache: "no-store", headers: { "Accept": "application/json" } });
+    const data = await res.json();
+
+    // Visual confirmation
+    document.body.classList.add("signal-unlocked");
+    badge.textContent = "REDLIGHT // Signal acquired";
+
+    // Stop Morse and lock the lamp on
+    beaconRunning = false;
+
+    console.clear();
+    console.log("%cREDLIGHT: manifest sync", "color:#ff3b4a;font-weight:bold;font-size:14px;");
+    console.table(data);
+
+    // If you include a base64 HTML payload in JSON, decode it:
+    if (data && typeof data.payload === "string" && data.payload.length > 0) {
+      const html = atob(data.payload);
+
+      // Option A: reveal in console (CTF-friendly)
+      console.log("%cPAYLOAD (decoded):", "color:#bffcff;font-weight:bold;");
+      console.log(html);
+
+      // Option B: inject into the page (uncomment if you want it to appear)
+      // document.body.insertAdjacentHTML("beforeend", html);
+    }
+  } catch (e) {
+    console.warn("Signal fetch failed:", e);
+  }
+}
+
+window.addEventListener("load", () => {
+  if (devToolsOpen()) {
+    fetchHiddenJSON();
+  }
+});
 </script>
 </body>
 </html>
