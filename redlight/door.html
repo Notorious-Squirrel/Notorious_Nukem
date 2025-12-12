@@ -19,9 +19,6 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
-    /* OPTIONAL: set your door image as background here
-       Put your image file in the same folder and rename it, then uncomment.
-    */
     .scene{
       width:min(900px, 96vw);
       aspect-ratio: 1 / 1;
@@ -29,18 +26,20 @@
       border:1px solid rgba(255,255,255,0.06);
       border-radius:16px;
       overflow:hidden;
-      background:
+
+      /* Put YOUR image filename here (ideally rename it to something simple) */
+      background-image:
         radial-gradient(1200px 700px at 50% 20%, rgba(255,60,80,0.08), transparent 55%),
-        linear-gradient(180deg, #070812, #030309);
-      background-image: url("ChatGPT Image Dec 12, 2025, 10_19_07 PM.png"); 
-      background-size: cover;
-      background-position: center; 
+        linear-gradient(180deg, #070812, #030309),
+        url("ChatGPT Image Dec 12, 2025, 10_19_07 PM.png");
+
+      background-size: cover, cover, cover;
+      background-position: center, center, center;
+      background-repeat: no-repeat, no-repeat, no-repeat;
+
       box-shadow: 0 20px 80px rgba(0,0,0,0.55);
     }
 
-    /* Position the light above the door.
-       Adjust these to match your picture.
-    */
     .lamp{
       position:absolute;
       left:50%;
@@ -54,7 +53,6 @@
       filter: drop-shadow(0 0 10px rgba(var(--glow), 0.25));
     }
 
-    /* The housing */
     .housing{
       width:190px;
       height:40px;
@@ -68,7 +66,6 @@
       justify-content:center;
     }
 
-    /* The bulb strip */
     .bulb{
       width:150px;
       height:14px;
@@ -80,7 +77,6 @@
       opacity: 0.35;
     }
 
-    /* Glow cone on wall/door */
     .cone{
       position:absolute;
       top:48px;
@@ -97,7 +93,6 @@
       mix-blend-mode: screen;
     }
 
-    /* ON state driven by JS */
     .on .bulb{
       opacity: 1;
       background: rgba(var(--red), 0.75);
@@ -106,11 +101,8 @@
         0 0 40px rgba(var(--glow), 0.25);
       border-color: rgba(255,255,255,0.14);
     }
-    .on .cone{
-      opacity: 1;
-    }
+    .on .cone{ opacity: 1; }
 
-    /* Tiny helper text (you can delete this) */
     .badge{
       position:absolute;
       left:14px;
@@ -122,6 +114,18 @@
       color: rgba(190, 252, 255, 0.85);
       font-size: 12px;
       user-select:none;
+    }
+
+    /* ✅ THESE WERE IN THE WRONG PLACE BEFORE */
+    .signal-unlocked .bulb {
+      background: rgba(255, 90, 90, 0.95);
+      box-shadow:
+        0 0 25px rgba(255, 60, 80, 0.9),
+        0 0 70px rgba(255, 60, 80, 0.45);
+    }
+    .signal-unlocked .badge {
+      color: #ffb3ba;
+      border-color: rgba(255,80,90,0.6);
     }
   </style>
 </head>
@@ -135,25 +139,11 @@
     </div>
 
     <div class="badge">REDLIGHT // Morse beacon active</div>
-
-    <!-- You can also hide Morse in DevTools as a backup:
-         -.-. .... . -.-. -.- / - .... . / -.. . ...- / - --- --- .-.. ... / ..-. .---- ..--- -->
   </div>
 
 <script>
-/**
- * Morse beacon for: "CHECK THE DEV TOOLS F12"
- * Timing:
- *  - dot  = 1 unit
- *  - dash = 3 units
- *  - intra-char gap = 1 unit
- *  - char gap = 3 units
- *  - word gap = 7 units
- *
- * Change UNIT_MS to speed up/slow down.
- */
 const TEXT = "CHECK THE DEV TOOLS F12";
-const UNIT_MS = 120; // 100–180 feels good. Slower = easier to read.
+const UNIT_MS = 120;
 const scene = document.getElementById("scene");
 
 const MORSE = {
@@ -170,7 +160,6 @@ const MORSE = {
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 function lampOn(on){ scene.classList.toggle("on", on); }
 
-// Build a timeline of ON/OFF durations in units
 function buildTimeline(message){
   const out = [];
   const words = message.toUpperCase().split(" ");
@@ -185,35 +174,18 @@ function buildTimeline(message){
 
       for (let si = 0; si < code.length; si++){
         const s = code[si];
-
-        // signal on
         out.push({ on:true, units: (s === ".") ? 1 : 3 });
-
-        // gap between signals within the same character (if not last)
-        if (si !== code.length - 1){
-          out.push({ on:false, units: 1 });
-        }
+        if (si !== code.length - 1) out.push({ on:false, units: 1 });
       }
-
-      // gap between characters (if not last char in word)
-      if (ci !== word.length - 1){
-        out.push({ on:false, units: 3 });
-      }
+      if (ci !== word.length - 1) out.push({ on:false, units: 3 });
     }
-
-    // gap between words (if not last word)
-    if (w !== words.length - 1){
-      out.push({ on:false, units: 7 });
-    }
+    if (w !== words.length - 1) out.push({ on:false, units: 7 });
   }
-
   return out;
 }
 
 async function loopBeacon(){
   const timeline = buildTimeline(TEXT);
-
-  // little lead-in pause
   lampOn(false);
   await sleep(UNIT_MS * 6);
 
@@ -222,7 +194,6 @@ async function loopBeacon(){
       lampOn(step.on);
       await sleep(step.units * UNIT_MS);
     }
-    // pause between repeats
     lampOn(false);
     await sleep(UNIT_MS * 10);
   }
