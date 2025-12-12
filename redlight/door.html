@@ -38,17 +38,20 @@
   background-repeat: no-repeat, no-repeat, no-repeat;
 
 
-    .lamp{
-      position:absolute;
-      left:50%;
-      top:18%;
-      transform:translate(-50%, -50%);
-      width:220px;
-      height:120px;
-      display:grid;
-      place-items:center;
-      pointer-events:none;
-      filter: drop-shadow(0 0 10px rgba(var(--glow), 0.25));
+  .lamp{
+    position:absolute;
+    left:50%;
+    top:18%;
+    transform:translate(-50%, -50%);
+    width:220px;
+    height:120px;
+    display:grid;
+    place-items:center;
+    pointer-events:none;
+    filter: drop-shadow(0 0 10px rgba(var(--glow), 0.25));
+    z-index: 5; /* 👈 IMPORTANT */
+    }
+
     }
 
     .housing{
