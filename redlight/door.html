@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>REDLIGHT // SIGNAL</title>
+  <style>
+    :root{
+      --bg:#05060b;
+      --panel:#0b0c14;
+      --red: 255, 50, 70;     /* base red */
+      --glow: 255, 40, 60;    /* glow red */
+    }
+
+    html,body{height:100%; margin:0; background:var(--bg); overflow:hidden;}
+    body{
+      display:grid;
+      place-items:center;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    /* OPTIONAL: set your door image as background here
+       Put your image file in the same folder and rename it, then uncomment.
+    */
+    .scene{
+      width:min(900px, 96vw);
+      aspect-ratio: 1 / 1;
+      position:relative;
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:16px;
+      overflow:hidden;
+      background:
+        radial-gradient(1200px 700px at 50% 20%, rgba(255,60,80,0.08), transparent 55%),
+        linear-gradient(180deg, #070812, #030309);
+      /* background-image: url("your-door-image.png"); */
+      /* background-size: cover; */
+      /* background-position: center; */
+      box-shadow: 0 20px 80px rgba(0,0,0,0.55);
+    }
+
+    /* Position the light above the door.
+       Adjust these to match your picture.
+    */
+    .lamp{
+      position:absolute;
+      left:50%;
+      top:18%;
+      transform:translate(-50%, -50%);
+      width:220px;
+      height:120px;
+      display:grid;
+      place-items:center;
+      pointer-events:none;
+      filter: drop-shadow(0 0 10px rgba(var(--glow), 0.25));
+    }
+
+    /* The housing */
+    .housing{
+      width:190px;
+      height:40px;
+      border-radius:10px;
+      background: linear-gradient(180deg, #141521, #0b0c14);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* The bulb strip */
+    .bulb{
+      width:150px;
+      height:14px;
+      border-radius:8px;
+      background: rgba(var(--red), 0.15);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+      transition: background 90ms linear, box-shadow 90ms linear, opacity 90ms linear;
+      opacity: 0.35;
+    }
+
+    /* Glow cone on wall/door */
+    .cone{
+      position:absolute;
+      top:48px;
+      left:50%;
+      transform:translateX(-50%);
+      width:520px;
+      height:360px;
+      background: radial-gradient(closest-side at 50% 0%,
+        rgba(var(--glow), 0.28),
+        rgba(var(--glow), 0.10) 35%,
+        rgba(var(--glow), 0.00) 70%);
+      opacity:0.0;
+      transition: opacity 90ms linear;
+      mix-blend-mode: screen;
+    }
+
+    /* ON state driven by JS */
+    .on .bulb{
+      opacity: 1;
+      background: rgba(var(--red), 0.75);
+      box-shadow:
+        0 0 14px rgba(var(--glow), 0.55),
+        0 0 40px rgba(var(--glow), 0.25);
+      border-color: rgba(255,255,255,0.14);
+    }
+    .on .cone{
+      opacity: 1;
+    }
+
+    /* Tiny helper text (you can delete this) */
+    .badge{
+      position:absolute;
+      left:14px;
+      bottom:14px;
+      padding:10px 12px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius:12px;
+      color: rgba(190, 252, 255, 0.85);
+      font-size: 12px;
+      user-select:none;
+    }
+  </style>
+</head>
+<body>
+  <div class="scene" id="scene">
+    <div class="lamp" id="lamp">
+      <div class="housing">
+        <div class="bulb" id="bulb"></div>
+      </div>
+      <div class="cone" id="cone"></div>
+    </div>
+
+    <div class="badge">REDLIGHT // Morse beacon active</div>
+
+    <!-- You can also hide Morse in DevTools as a backup:
+         -.-. .... . -.-. -.- / - .... . / -.. . ...- / - --- --- .-.. ... / ..-. .---- ..--- -->
+  </div>
+
+<script>
+/**
+ * Morse beacon for: "CHECK THE DEV TOOLS F12"
+ * Timing:
+ *  - dot  = 1 unit
+ *  - dash = 3 units
+ *  - intra-char gap = 1 unit
+ *  - char gap = 3 units
+ *  - word gap = 7 units
+ *
+ * Change UNIT_MS to speed up/slow down.
+ */
+const TEXT = "CHECK THE DEV TOOLS F12";
+const UNIT_MS = 120; // 100–180 feels good. Slower = easier to read.
+const scene = document.getElementById("scene");
+
+const MORSE = {
+  A: ".-",    B: "-...",  C: "-.-.",  D: "-..",   E: ".",
+  F: "..-.",  G: "--.",   H: "....",  I: "..",    J: ".---",
+  K: "-.-",   L: ".-..",  M: "--",    N: "-.",    O: "---",
+  P: ".--.",  Q: "--.-",  R: ".-.",   S: "...",   T: "-",
+  U: "..-",   V: "...-",  W: ".--",   X: "-..-",  Y: "-.--",
+  Z: "--..",
+  "0":"-----","1":".----","2":"..---","3":"...--","4":"....-",
+  "5":".....","6":"-....","7":"--...","8":"---..","9":"----."
+};
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function lampOn(on){ scene.classList.toggle("on", on); }
+
+// Build a timeline of ON/OFF durations in units
+function buildTimeline(message){
+  const out = [];
+  const words = message.toUpperCase().split(" ");
+
+  for (let w = 0; w < words.length; w++){
+    const word = words[w];
+
+    for (let ci = 0; ci < word.length; ci++){
+      const ch = word[ci];
+      const code = MORSE[ch];
+      if (!code) continue;
+
+      for (let si = 0; si < code.length; si++){
+        const s = code[si];
+
+        // signal on
+        out.push({ on:true, units: (s === ".") ? 1 : 3 });
+
+        // gap between signals within the same character (if not last)
+        if (si !== code.length - 1){
+          out.push({ on:false, units: 1 });
+        }
+      }
+
+      // gap between characters (if not last char in word)
+      if (ci !== word.length - 1){
+        out.push({ on:false, units: 3 });
+      }
+    }
+
+    // gap between words (if not last word)
+    if (w !== words.length - 1){
+      out.push({ on:false, units: 7 });
+    }
+  }
+
+  return out;
+}
+
+async function loopBeacon(){
+  const timeline = buildTimeline(TEXT);
+
+  // little lead-in pause
+  lampOn(false);
+  await sleep(UNIT_MS * 6);
+
+  while(true){
+    for (const step of timeline){
+      lampOn(step.on);
+      await sleep(step.units * UNIT_MS);
+    }
+    // pause between repeats
+    lampOn(false);
+    await sleep(UNIT_MS * 10);
+  }
+}
+
+loopBeacon();
+</script>
+</body>
+</html>
