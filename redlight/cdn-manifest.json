@@ -1,7 +1,6 @@
 {
   "build": "redlight-1.0.3",
   "telemetry": true,
-  "payload_type": "text",
-  "payload_encoding": "base64",
-  "payload": "PCEtLSAuLi4gLS0tIC4uLiAtLS0gLS0tIC0tLSAtLS0gLS0tIC0tLSAtLS0gLS0tIC0tLSAtLS0gLS0tIC0tLSAtLS0gLS0tIC0tLSAtLS0gLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tIC0tLS0tIC0tLS0tLS0tPCEtLS0+"
+  "payload_type": "Furry",
+  "payload": "Tm90b3Jpb3VzIE51a2VtIHNxdWlycmVsIHNheSBmbGFne2JlX2NAQGx9Lg=="
 }
