@@ -27,18 +27,16 @@
       border-radius:16px;
       overflow:hidden;
 
-      /* Put YOUR image filename here (ideally rename it to something simple) */
-      background-image:
-        radial-gradient(1200px 700px at 50% 20%, rgba(255,60,80,0.08), transparent 55%),
-        linear-gradient(180deg, #070812, #030309),
-        url("redlightdoor.png");
+  /* Background image + overlays (image first, overlays on top) */
+  background-image:
+  url("redlightdoor.png"),
+  radial-gradient(1200px 700px at 50% 20%, rgba(255,60,80,0.08), transparent 55%),
+  linear-gradient(180deg, rgba(7,8,18,0.35), rgba(3,3,9,0.35));
 
-      background-size: cover, cover, cover;
-      background-position: center, center, center;
-      background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: cover, cover, cover;
+  background-position: center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 
-      box-shadow: 0 20px 80px rgba(0,0,0,0.55);
-    }
 
     .lamp{
       position:absolute;
