@@ -1,0 +1,586 @@
+#!/usr/bin/env python3
+# NOTORIOUS NUKEM SQUIRREL — Text Adventure (Full Run)
+# Duke-Nukem-inspired parody tone, with:
+# - Adjustable typing speed + scene pacing controls (top of file)
+# - Visual map + navigation between rooms (not clustered)
+# - Two dead-end death branches:
+#     1) Trapdoor → spikes below
+#     2) “I.T” clown → attacks your boots/feet (kept non-graphic)
+# - Puzzles: Base64 note → access word, Caesar keypad, vault choice endings
+
+# ---------------------------
+# Imports & Globals
+# ---------------------------
+import os, platform, shutil
+import sys, time, random, textwrap, base64
+
+# ==========================================================
+# SPEED CONTROLS (EDIT THESE)
+# ==========================================================
+FAST_MODE = False  # True = instant text + faster effects
+
+TYPE_DELAY      = 0.020  # typing speed for normal text (bigger = slower)
+GLITCH_DELAY    = 0.018  # typing speed for glitch text
+PAUSE_SHORT     = 0.35   # small beat between lines
+PAUSE_LONG      = 1.10   # bigger beat for scene transitions
+RAIN_LINE_DELAY = 0.035  # digit rain speed (bigger = slower)
+FLICKER_ON      = 0.28
+FLICKER_OFF     = 0.14
+
+# You can also tweak the overall wrap width:
+WRAP_WIDTH      = 72
+
+# ---------------------------
+# UI helpers
+# ---------------------------
+def fullscreen():
+    """Try to maximise the terminal window cross-platform (safe no-crash)."""
+    system = platform.system()
+    try:
+        if system == "Windows":
+            os.system("mode con: cols=180 lines=50")
+        elif system in ("Linux", "Darwin"):
+            sys.stdout.write("\033[9;1t")     # request fullscreen (xterm family)
+            sys.stdout.write("\033[?1049h")   # alternate buffer
+            sys.stdout.flush()
+        os.system("cls" if system == "Windows" else "clear")
+    except Exception:
+        pass
+
+def _sleep(t):
+    if FAST_MODE:
+        return
+    time.sleep(t)
+
+def slowprint(text, delay=None):
+    if delay is None:
+        delay = TYPE_DELAY
+    if FAST_MODE:
+        delay = 0.0
+    for ch in text:
+        sys.stdout.write(ch)
+        sys.stdout.flush()
+        time.sleep(delay)
+    print()
+
+def glitchprint(text):
+    """Occasional 'glitch' characters for ambience."""
+    out = []
+    for ch in text:
+        if ch.isalnum() and random.random() < 0.03:
+            out.append(chr(ord(ch) ^ random.randint(1, 3)))
+        else:
+            out.append(ch)
+    slowprint("".join(out), delay=GLITCH_DELAY if not FAST_MODE else 0.0)
+
+def digit_rain(duration=2.5, width=72, density=0.12):
+    """Matrix-style digit rain effect."""
+    charset = "01A3C5E79F"
+    frames = int(18 if FAST_MODE else max(20, duration * 18))
+    for _ in range(frames):
+        line = []
+        for _ in range(width):
+            line.append(random.choice(charset) if random.random() < density else " ")
+        sys.stdout.write("".join(line) + "\n")
+        sys.stdout.flush()
+        time.sleep(0.01 if FAST_MODE else RAIN_LINE_DELAY)
+
+def flicker_lights(cycles=2, wipe_lines=14):
+    for _ in range(cycles):
+        glitchprint("• The neon buzzes and flickers •")
+        _sleep(FLICKER_ON if not FAST_MODE else 0.0)
+        for _ in range(wipe_lines):
+            print()
+        _sleep(FLICKER_OFF if not FAST_MODE else 0.0)
+
+def radio_static_sequence():
+    glitchprint("[comms static]  kssshh—")
+    _sleep(0.45 if not FAST_MODE else 0.0)
+    glitchprint("...—ello? ...hel— kzzZT—")
+    _sleep(0.45 if not FAST_MODE else 0.0)
+    glitchprint("...signal is junk— stand— 0dB…")
+    _sleep(0.55 if not FAST_MODE else 0.0)
+    glitchprint("…szzzT… <locking onto sewer grid>")
+    _sleep(0.55 if not FAST_MODE else 0.0)
+
+def rule(char="─", width=72):
+    print(char * width)
+
+def wrap(text):
+    if not isinstance(text, str):
+        text = str(text)
+    print(textwrap.fill(text, width=WRAP_WIDTH))
+
+def blackout(multiplier=2, hold=1.1):
+    try:
+        rows = shutil.get_terminal_size().lines
+    except Exception:
+        rows = 24
+    print("\n" * int(rows * multiplier), end="")
+    sys.stdout.flush()
+    _sleep(hold)
+
+# ---------------------------
+# Banner
+# ---------------------------
+BANNER = r"""
+################################################################################
+#                                                                              #
+#         _   _  _   _  _  __  _____  __  __    ____   ____   _   _            #
+#        | \ | || | | || |/ / | ____||  \/  |  / ___| / ___| | | | |           #
+#        |  \| || | | || ' /  |  _|  | |\/| |  \___ \| |     | |_| |           #
+#        | |\  || |_| || . \  | |___ | |  | |   ___) | |___  |  _  |           #
+#        |_| \_| \___/ |_|\_\ |_____||_|  |_|  |____/ \____| |_| |_|           #
+#                                                                              #
+#                 N O T O R I O U S   N U K E M   S Q U I R R E L              #
+#                                                                              #
+################################################################################
+"""
+
+# ---------------------------
+# Game State
+# ---------------------------
+inventory = set()
+flags = {
+    "read_note": False,
+    "terminal_unlocked": False,
+    "alarm_armed": True,
+    "fail_count": 0,
+    "entered_core": False,
+    "boots_intact": True,
+    "rooms_cleared": 0,
+    "took_old_usb": False,
+}
+
+def add_item(item):
+    if item not in inventory:
+        inventory.add(item)
+        slowprint(f"[+] You acquired: {item}")
+
+def has(item):
+    return item in inventory
+
+def show_inventory():
+    if not inventory:
+        slowprint("[Inventory is empty]")
+        return
+    slowprint("Inventory:")
+    for it in sorted(inventory):
+        slowprint(f" • {it}")
+
+def ask(prompt="> "):
+    choice = input(prompt).strip().lower()
+    if choice in ("inv", "i", "inventory"):
+        show_inventory()
+        return ask(prompt)
+    return choice
+
+def restart():
+    slowprint("\nPlay again? (y/n)")
+    if input("> ").strip().lower().startswith("y"):
+        main()
+    else:
+        slowprint("Cheers for playing… keep it nutty. 🐿️💥")
+
+# ---------------------------
+# Puzzles
+# ---------------------------
+def caesar_shift(s, k):
+    out = []
+    for ch in s:
+        if "A" <= ch <= "Z":
+            out.append(chr((ord(ch) - 65 + k) % 26 + 65))
+        elif "a" <= ch <= "z":
+            out.append(chr((ord(ch) - 97 + k) % 26 + 97))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+def puzzle_base64_note():
+    rule()
+    slowprint("You flick open a greasy maintenance clipboard.")
+    encoded = base64.b64encode(b"JACK").decode()  # SkFDSw==
+    wrap(f"Scrawled in marker: {encoded}")
+    slowprint("(Decode it to learn the access word.)")
+    flags["read_note"] = True
+    rule()
+
+def puzzle_keypad_caesar():
+    rule()
+    slowprint("A heavy blast door blocks the pipeway. A keypad pulses faintly.")
+    hint = "SEHT"
+    if has("Decryptor Dongle"):
+        wrap("Your Decryptor Dongle flashes: 'Caesar(-1): SEHT → ????'.")
+    else:
+        wrap("The keypad cycles a taunting hint: 'SEHT'. It feels… shifted.")
+    slowprint("Enter the 4-letter code (or type 'back' to retreat):")
+    while True:
+        code = input("> ").strip()
+        if code.lower() == "back":
+            return False
+        if code.upper() == caesar_shift(hint, -1):  # RDGS
+            slowprint("• Soft chime. Bolts retract.")
+            return True
+        slowprint("• Angry buzz. The keypad resets.")
+        flags["fail_count"] += 1
+        if flags["fail_count"] >= 3:
+            glitchprint("The neon smears. The pipes feel… closer.")
+
+# ---------------------------
+# Map System
+# ---------------------------
+# Rooms are nodes; player moves via N/E/S/W.
+# Two dead-end death nodes:
+#  - "trapdoor" : spikes below
+#  - "clown_den": I.T clown attack
+
+MAP = {
+    "hub":        {"name": "Sewer Hub",          "n": "pump",      "e": "relay",    "s": "trapdoor", "w": "storage"},
+    "pump":       {"name": "Pump Station",       "s": "hub",       "e": "lab"},
+    "relay":      {"name": "Signal Relay",       "w": "hub",       "e": "clown_den", "n": "core_gate"},
+    "storage":    {"name": "Maintenance Bay",    "e": "hub",       "w": "arcade"},
+    "lab":        {"name": "Bio-Lab",            "w": "pump"},
+    "arcade":     {"name": "Arcade Relic Room",  "e": "storage"},
+    "core_gate":  {"name": "Core Gate",          "s": "relay",     "n": "core"},
+    "core":       {"name": "NEXUS Core Vault",   "s": "core_gate"},
+    "trapdoor":   {"name": "Trapdoor Alley",     "n": "hub"},
+    "clown_den":  {"name": "I.T Clown Den",      "w": "relay"},
+}
+
+# Which nodes are “content rooms” with a scene:
+ROOM_SCENES = set(["hub", "pump", "relay", "storage", "lab", "arcade", "core_gate", "core", "trapdoor", "clown_den"])
+
+def draw_map(current):
+    # Simple visual map with current position marked.
+    # Layout:
+    #        [lab]
+    #          |
+    # [arcade]-[storage]-[hub]-[relay]-[clown]
+    #                    |      |
+    #               [trapdoor] [core_gate]-[core]
+    def box(node):
+        label = MAP[node]["name"]
+        if node == current:
+            return f"[{label} *]"
+        return f"[{label}]"
+
+    print()
+    rule("=", WRAP_WIDTH)
+    slowprint("MAP (You are marked with *)")
+    print()
+    # Top row
+    line1 = " " * 26 + box("lab")
+    print(line1)
+    print(" " * 29 + "|")
+    # Middle row
+    line3 = f"{box('arcade')}-{box('storage')}-{box('hub')}-{box('relay')}-{box('clown_den')}"
+    print(line3)
+    # Down connectors from hub + relay
+    print(" " * (len(box("arcade")) + 1 + len(box("storage")) + 1 + len(box("hub")) // 2) + "|"
+          + " " * (len(box("hub")) // 2 + 1 + len(box("relay")) // 2) + "|")
+    # Bottom row (trapdoor under hub, core gate under relay)
+    # Rough alignment, readable > perfect.
+    left = " " * (len(box("arcade")) + 1 + len(box("storage")) + 1)
+    print(left + box("trapdoor") + " " * 3 + box("core_gate") + "-" + box("core"))
+    rule("=", WRAP_WIDTH)
+    print()
+
+def nav_help():
+    slowprint("Commands: n/e/s/w to move, map to view map, look, inv, back, quit")
+
+def move_to(current, direction):
+    if direction not in ("n", "e", "s", "w"):
+        return current, "That’s not a direction."
+    if direction not in MAP[current]:
+        return current, "Dead pipe. No way through."
+    nxt = MAP[current][direction]
+    return nxt, None
+
+# ---------------------------
+# Act 0 — Arcade Intro
+# ---------------------------
+def scene_intro_arcade():
+    print(BANNER)
+    slowprint("💾 INSERT COIN")
+    _sleep(PAUSE_LONG)
+
+    wrap("It's 2:06 AM. The city is neon-slick and filthy.")
+    wrap("Your arcade backroom HQ hums — CRTs buzzing, fans whining, empty energy cans everywhere.")
+    _sleep(PAUSE_SHORT)
+
+    slowprint("A cigar smoulders in an ashtray. Your pager detonates with noise.")
+    _sleep(PAUSE_SHORT)
+
+    glitchprint(">>> ALERT: MUTANT RODENT ACTIVITY DETECTED <<<")
+    glitchprint(">>> LOCATION: SEWER GRID 7 <<<")
+    _sleep(PAUSE_SHORT)
+
+    wrap("You crack your knuckles. Time to go nuts.")
+    slowprint("Do you:")
+    slowprint("1) Grab the Nukem Blaster")
+    slowprint("2) Check the surveillance monitors")
+    slowprint("3) Ignore it and keep gaming")
+
+    while True:
+        c = ask("> ")
+        if c == "1":
+            add_item("Nukem Blaster")
+            return scene_street_run
+        if c == "2":
+            wrap("The screen flickers. A grin full of sharp pixels stares back. Someone just hacked your feed.")
+            return scene_street_run
+        if c == "3":
+            glitchprint("BAD MOVE.")
+            wrap("The wall explodes inward. Something yanks you off your chair.")
+            slowprint("GAME OVER — 'AFK'.")
+            return scene_end
+        slowprint("Choose 1, 2, or 3.")
+
+def scene_street_run():
+    rule()
+    wrap("Outside, rain hisses on hot tarmac. Neon signage bleeds colour into puddles.")
+    wrap("A manhole cover rattles like it’s laughing.")
+    _sleep(PAUSE_SHORT)
+
+    slowprint("Do you:")
+    slowprint("1) Drop into the sewer")
+    slowprint("2) Go back for your old USB dongle labelled 'NEXUS'")
+    while True:
+        c = ask("> ")
+        if c == "1":
+            return scene_sewer_entry
+        if c == "2":
+            flags["took_old_usb"] = True
+            add_item("Old USB Dongle")
+            wrap("You pocket it. Smells like ozone and bad decisions.")
+            return scene_sewer_entry
+        slowprint("Choose 1 or 2.")
+
+def scene_sewer_entry():
+    rule()
+    wrap("You pry the manhole open and descend into warm steam and dripping brick.")
+    radio_static_sequence()
+    _sleep(PAUSE_SHORT)
+    glitchprint("GRID 7 ONLINE")
+    digit_rain(duration=2.4, width=WRAP_WIDTH, density=0.12)
+    wrap("A tunnel opens into a junction of pipes and service doors.")
+    _sleep(PAUSE_SHORT)
+    return scene_explore_start
+
+# ---------------------------
+# Free-roam exploration
+# ---------------------------
+location = "hub"
+visited = set()
+
+def scene_explore_start():
+    global location
+    location = "hub"
+    visited.clear()
+    return scene_room
+
+def scene_room():
+    """Main room router: shows room text once, then navigation prompt."""
+    global location
+
+    if location not in ROOM_SCENES:
+        location = "hub"
+
+    # Room-specific first-time flavour + interactions
+    if location == "hub":
+        scene_hub()
+    elif location == "pump":
+        scene_pump_station()
+    elif location == "relay":
+        scene_signal_relay()
+    elif location == "storage":
+        scene_maintenance_bay()
+    elif location == "lab":
+        scene_bio_lab()
+    elif location == "arcade":
+        scene_arcade_relic()
+    elif location == "core_gate":
+        scene_core_gate()
+    elif location == "core":
+        return scene_core_vault()
+    elif location == "trapdoor":
+        return scene_trapdoor_death()
+    elif location == "clown_den":
+        return scene_clown_death()
+
+    # Navigation loop for the current node
+    while True:
+        slowprint("")
+        slowprint(f"You are at: {MAP[location]['name']}")
+        slowprint("Move with n/e/s/w, or type 'map', 'look', 'inv', 'quit'.")
+        c = ask("> ")
+
+        if c in ("quit", "q", "exit"):
+            return scene_end
+        if c == "map":
+            draw_map(location)
+            continue
+        if c == "look":
+            describe_exits(location)
+            continue
+
+        # Movement
+        if c in ("n", "e", "s", "w"):
+            nxt, err = move_to(location, c)
+            if err:
+                slowprint(err)
+                continue
+            location = nxt
+            return scene_room
+
+        slowprint("Try: n / e / s / w / map / look / inv / quit")
+
+def describe_exits(loc):
+    exits = []
+    for d in ("n", "e", "s", "w"):
+        if d in MAP[loc]:
+            exits.append(f"{d.upper()} → {MAP[MAP[loc][d]]['name']}")
+    if not exits:
+        slowprint("No exits. That's… not ideal.")
+        return
+    slowprint("Exits:")
+    for e in exits:
+        slowprint(f" • {e}")
+
+# ---------------------------
+# Room scenes
+# ---------------------------
+def scene_hub():
+    if "hub" in visited:
+        return
+    visited.add("hub")
+    rule("=")
+    glitchprint("SEWER HUB: GRID 7")
+    wrap("A junction of pipes, warning tape, and humming conduits.")
+    wrap("Spray paint on the wall reads: 'N3XU5 RUNS BELOW'.")
+    _sleep(PAUSE_SHORT)
+    draw_map(location)
+    nav_help()
+
+def scene_pump_station():
+    if "pump" in visited:
+        return
+    visited.add("pump")
+    rule()
+    wrap("The Pump Station thunders like a giant heart. Water slams through valves.")
+    wrap("A maintenance clipboard hangs from a hook. The ink looks fresh.")
+    slowprint("Actions: 1) Read clipboard  2) Leave it")
+    c = ask("> ")
+    if c == "1":
+        puzzle_base64_note()
+    else:
+        wrap("You leave it… but your curiosity itches.")
+    _sleep(PAUSE_SHORT)
+
+def scene_signal_relay():
+    if "relay" in visited:
+        return
+    visited.add("relay")
+    rule()
+    wrap("The Signal Relay room is a cage of antennas and old routers bolted to brick.")
+    glitchprint("PACKET LOSS: 99%")
+    wrap("A small port sits under a label: 'OVERRIDE'.")
+    slowprint("Actions: 1) Plug in a dongle  2) Kick the router  3) Back off")
+    c = ask("> ")
+    if c == "1":
+        if has("Old USB Dongle"):
+            wrap("The old dongle lights up like it’s been waiting for this moment.")
+            inventory.discard("Old USB Dongle")
+            add_item("Decryptor Dongle")
+            flags["terminal_unlocked"] = True
+            wrap("Your HUD pings: 'Decryptor Dongle online'.")
+        else:
+            wrap("You’ve got nothing that fits. Yet.")
+    elif c == "2":
+        glitchprint("You kick it. It kicks back.")
+        flicker_lights(cycles=1, wipe_lines=10)
+    else:
+        wrap("You step away, letting the static settle.")
+
+def scene_maintenance_bay():
+    if "storage" in visited:
+        return
+    visited.add("storage")
+    rule()
+    wrap("A Maintenance Bay filled with lockers and tool racks. Something scratches inside the vents.")
+    slowprint("Actions: 1) Pry open locker  2) Check toolkit  3) Leave")
+    c = ask("> ")
+    if c == "1":
+        add_item("Skeleton Keycard")
+        add_item("Signal Jammer")
+        wrap("Inside: a matte spoof-card and a chunky jammer puck. Lovely.")
+    elif c == "2":
+        if has("Nukem Blaster"):
+            wrap("You check the blaster. Still ridiculous. Still beautiful.")
+        else:
+            wrap("You realise you forgot your blaster. That’s… embarrassing.")
+    else:
+        wrap("You keep your hands where you can see them.")
+
+def scene_bio_lab():
+    if "lab" in visited:
+        return
+    visited.add("lab")
+    rule()
+    wrap("The Bio-Lab smells like bleach and burnt plastic.")
+    wrap("Glass tubes line the wall. One is cracked from the inside.")
+    slowprint("A keypad-controlled drawer blinks: 'ACCESS CODE'.")
+    slowprint("Actions: 1) Try access code  2) Leave")
+    c = ask("> ")
+    if c == "1":
+        if not flags["read_note"]:
+            wrap("You don't know the code. Maybe there’s a note somewhere.")
+            return
+        slowprint("Enter access code:")
+        code = input("> ").strip().upper()
+        if code == "JACK":
+            wrap("Drawer pops open. Inside: a small canister labelled 'ANTI-RAT SERUM'.")
+            add_item("Anti-Rat Serum")
+            flags["rooms_cleared"] += 1
+        else:
+            wrap("ACCESS DENIED. The drawer laughs at you. (Not literally. Probably.)")
+    else:
+        wrap("You leave the lab before anything in a tube notices you.")
+
+def scene_arcade_relic():
+    if "arcade" in visited:
+        return
+    visited.add("arcade")
+    rule()
+    wrap("An old, half-flooded side room. Someone dragged an arcade cabinet down here.")
+    wrap("The screen displays one word: 'CONFIDENCE'. Then it dies.")
+    slowprint("Actions: 1) Salvage a part  2) Walk away")
+    c = ask("> ")
+    if c == "1":
+        add_item("Arcade Fuse")
+        flags["rooms_cleared"] += 1
+        wrap("You yank a fuse from the guts. It’s warm. It shouldn’t be warm.")
+    else:
+        wrap("You leave the cabinet alone. It feels like it’s judging you.")
+
+def scene_core_gate():
+    if "core_gate" in visited:
+        return
+    visited.add("core_gate")
+    rule("=")
+    wrap("A reinforced gate blocks the way. A reader slot waits for a keycard.")
+    wrap("A keypad pulses with a shifting hint.")
+    slowprint("Actions: 1) Use keycard  2) Inspect keypad  3) Back off")
+    while True:
+        c = ask("> ")
+        if c == "1":
+            if not has("Skeleton Keycard"):
+                wrap("You don’t have a keycard that’ll spoof this.")
+                continue
+            wrap("The keycard half-works. The gate wants more.")
+            if puzzle_keypad_caesar():
+                flags["entered_core"] = True
+                slowprint("The gate releases with a heavy hiss.")
+                return
+            wrap("You step back from the gate.")
+     
