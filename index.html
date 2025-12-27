@@ -57,13 +57,17 @@ body {
     background: #111;
     border-radius: 6px;
     z-index: 1;
+
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     font-size: 0.75rem;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
+/* Scratch-off canvas overlay (this hides the text until scratched) */
 #scratch-canvas {
     position: absolute;
     top: 2%;
@@ -72,6 +76,8 @@ body {
     width: 320px;
     height: 145px;
     z-index: 3;
+    touch-action: none;
+    cursor: pointer;
 }
 
 /* === PRESS START === */
@@ -81,6 +87,7 @@ body {
     left: 50%;
     transform: translateX(-50%);
     animation: blink 1s steps(2) infinite;
+    z-index: 4;
 }
 
 @keyframes blink {
@@ -95,6 +102,7 @@ body {
     border: 2px solid #00ffc3;
     color: #e7ffff;
     text-decoration: none;
+    z-index: 6;
 }
 
 .menu-node::before {
@@ -103,12 +111,12 @@ body {
 }
 
 #start-game { bottom: 48%; left: 12%; }
-#training { bottom: 78%; left: 12%; }
-#load-game { bottom: 59%; left: 53%; }
-#arsenal { bottom: 11%; left: 22%; }
-#options { bottom: 29%; left: 53%; }
-#credits { bottom: 18%; left: 64%; }
-#extras { bottom: 71%; right: 10%; }
+#training   { bottom: 78%; left: 12%; }
+#load-game  { bottom: 59%; left: 53%; }
+#arsenal    { bottom: 11%; left: 22%; }
+#options    { bottom: 29%; left: 53%; }
+#credits    { bottom: 18%; left: 64%; }
+#extras     { bottom: 71%; right: 10%; }
 
 /* === FLAG PANEL === */
 .flag-panel {
@@ -151,22 +159,24 @@ body {
     border: 2px solid #00ffc3;
     padding: 10px;
     font-size: 0.7rem;
+    z-index: 10;
 }
 
 #leaderboard td {
     padding: 4px;
     border-bottom: 1px solid rgba(0,255,195,0.25);
 }
+
 /* Static Nukem Squirrel character */
 .nukem-squirrel {
     position: absolute;
-    bottom: 12%;        /* adjust to sit on a platform */
-    left: 6%;           /* move left/right */
-    width: 96px;        /* change size here */
+    bottom: 12%;
+    left: 6%;
+    width: 96px;
     height: auto;
     image-rendering: pixelated;
-    z-index: 5;         /* above background, below UI if needed */
-    pointer-events: none; /* doesn’t block buttons */
+    z-index: 5;
+    pointer-events: none;
 }
 
 .rank { color: #ffeb3b; }
@@ -177,53 +187,53 @@ body {
 <body>
 
 <div class="hub">
-<!-- Static Nukem Squirrel character -->
-<img
-  src="nukemsuirrel.png"
-  alt="Nukem Squirrel"
-  class="nukem-squirrel"
-/>
+    <!-- Static Nukem Squirrel character -->
+    <img src="nukemsuirrel.png" alt="Nukem Squirrel" class="nukem-squirrel"/>
 
-<div class="logo"><span class="symbol">¤</span>NOTORIOUS NUKEM SQUIRREL</div>
+    <div class="logo"><span class="symbol">¤</span>NOTORIOUS NUKEM SQUIRREL</div>
 
-<div class="scratch-panel">
-TOP-SECRET BRIEFING<br>SCRATCH TO REVEAL
-</div>
-<canvas id="scratch-canvas"></canvas>
+    <!-- Hidden message behind scratch -->
+    <div class="scratch-panel">
+        TOP-SECRET BRIEFING<br>
+        SCRATCH TO REVEAL<br><br>
+        NEXUS ENTRY CODE: <b>FLAG{S5-OMEGA}</b>
+    </div>
 
-<div class="press-start">PRESS START TO SPAWN</div>
+    <!-- Scratch layer on top -->
+    <canvas id="scratch-canvas"></canvas>
 
-<a href="nukem.html" class="menu-node" id="start-game">Stage 1 - Hollywood Holocaust</a>
-<a href="#" class="menu-node" id="training">stage 2 - Dark Side</a>
-<a href="#" class="menu-node" id="load-game">Stage 3 - Raw Meat</a>
-<a href="#" class="menu-node" id="arsenal">Stage 4 - L.A Rumble</a>
-<a href="#" class="menu-node" id="options">Stage 5 - Hotel Hell</a>
-<a href="redlight/door.html" class="menu-node" id="credits">Stage 6 - Red Light District</a>
-<a href="terminal.html" class="menu-node" id="extras">Stage 7 - Crash Course</a>
+    <div class="press-start">PRESS START TO SPAWN</div>
 
-<!-- LEADERBOARD -->
-<div class="leaderboard-panel">
-<b>LEADERBOARD</b>
-<table id="leaderboard"></table>
-</div>
+    <a href="nukem.html" class="menu-node" id="start-game">Stage 1 - Hollywood Holocaust</a>
+    <a href="#" class="menu-node" id="training">Stage 2 - Dark Side</a>
+    <a href="#" class="menu-node" id="load-game">Stage 3 - Raw Meat</a>
+    <a href="#" class="menu-node" id="arsenal">Stage 4 - L.A Rumble</a>
+    <a href="#" class="menu-node" id="options">Stage 5 - Hotel Hell</a>
+    <a href="redlight/door.html" class="menu-node" id="credits">Stage 6 - Red Light District</a>
+    <a href="terminal.html" class="menu-node" id="extras">Stage 7 - Crash Course</a>
 
-<!-- FLAG SUBMIT -->
-<div class="flag-panel">
-<input id="username" placeholder="USERNAME">
-<select id="stage">
-<option value="1">STAGE 1</option>
-<option value="2">STAGE 2</option>
-<option value="3">STAGE 3</option>
-<option value="4">STAGE 4</option>
-<option value="5">STAGE 5</option>
-<option value="5">STAGE 6</option>
-<option value="5">STAGE 7</option>
-<option value="5">STAGE 8</option>
-</select>
-<input id="flag" placeholder="FLAG">
-<button onclick="submitFlag()">SUBMIT</button>
-</div>
+    <!-- LEADERBOARD -->
+    <div class="leaderboard-panel">
+        <b>LEADERBOARD</b>
+        <table id="leaderboard"></table>
+    </div>
 
+    <!-- FLAG SUBMIT -->
+    <div class="flag-panel">
+        <input id="username" placeholder="USERNAME">
+        <select id="stage">
+            <option value="1">STAGE 1</option>
+            <option value="2">STAGE 2</option>
+            <option value="3">STAGE 3</option>
+            <option value="4">STAGE 4</option>
+            <option value="5">STAGE 5</option>
+            <option value="6">STAGE 6</option>
+            <option value="7">STAGE 7</option>
+            <option value="8">STAGE 8</option>
+        </select>
+        <input id="flag" placeholder="FLAG">
+        <button onclick="submitFlag()">SUBMIT</button>
+    </div>
 </div>
 
 <script>
@@ -238,52 +248,99 @@ userEl.onchange = () => localStorage.setItem("ctf_user", userEl.value);
 stageEl.onchange = () => localStorage.setItem("ctf_stage", stageEl.value);
 
 async function submitFlag() {
-  const res = await fetch(`${API}/api/submit`, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      username: userEl.value,
-      stage: Number(stageEl.value),
-      flag: document.getElementById("flag").value
-    })
-  });
-  const data = await res.json();
-  alert(res.ok ? data.message : data.detail);
-  loadLeaderboard();
+  try{
+    const res = await fetch(`${API}/api/submit`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        username: userEl.value,
+        stage: Number(stageEl.value),
+        flag: document.getElementById("flag").value
+      })
+    });
+    const data = await res.json().catch(()=> ({}));
+    alert(res.ok ? (data.message || "Submitted") : (data.detail || "Submit failed"));
+    loadLeaderboard();
+  } catch (e){
+    alert("API not reachable right now.");
+  }
 }
 
 async function loadLeaderboard() {
   const table = document.getElementById("leaderboard");
-  const res = await fetch(`${API}/api/leaderboard`);
-  const data = await res.json();
-  table.innerHTML = "";
-  data.forEach((r,i)=>{
-    table.innerHTML += `<tr>
-      <td class="rank">#${i+1}</td>
-      <td>${r.username}</td>
-      <td class="completed">${r.completed}</td>
-    </tr>`;
-  });
+  try{
+    const res = await fetch(`${API}/api/leaderboard`);
+    const data = await res.json();
+    table.innerHTML = "";
+    data.forEach((r,i)=>{
+      table.innerHTML += `<tr>
+        <td class="rank">#${i+1}</td>
+        <td>${r.username}</td>
+        <td class="completed">${r.completed}</td>
+      </tr>`;
+    });
+  } catch(e){
+    table.innerHTML = `<tr><td>Leaderboard offline</td></tr>`;
+  }
 }
 loadLeaderboard();
-setInterval(loadLeaderboard,10000);
+setInterval(loadLeaderboard, 10000);
 </script>
 
 <script>
-(function(){
-const c=document.getElementById("scratch-canvas"),x=c.getContext("2d");
-const img=new Image(); img.src="nukemsquirrel.png";
-img.onload=()=>{c.width=320;c.height=145;x.drawImage(img,0,0,320,145);}
-let d=false;
-c.onmousedown=()=>d=true;
-window.onmouseup=()=>d=false;
-c.onmousemove=e=>{
- if(!d)return;
- x.globalCompositeOperation="destination-out";
- x.beginPath();
- x.arc(e.offsetX,e.offsetY,18,0,Math.PI*2);
- x.fill();
-};
+(() => {
+  const canvas = document.getElementById("scratch-canvas");
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+
+  // IMPORTANT: this is the top layer image you requested
+  img.src = "nukemsuirrel.png";
+
+  function resizeAndDraw() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.round(rect.width);
+    canvas.height = Math.round(rect.height);
+
+    // Draw the image scaled to fully cover the scratch area
+    ctx.globalCompositeOperation = "source-over";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (img.complete) {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  img.onload = resizeAndDraw;
+  window.addEventListener("resize", resizeAndDraw);
+
+  // If cached
+  if (img.complete) resizeAndDraw();
+
+  let down = false;
+
+  function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+    return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+  }
+
+  function scratch(e){
+    if(!down) return;
+    e.preventDefault();
+    const {x,y} = getPos(e);
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  canvas.addEventListener("mousedown", (e)=>{ down = true; scratch(e); });
+  window.addEventListener("mouseup", ()=>{ down = false; });
+  canvas.addEventListener("mousemove", scratch);
+
+  canvas.addEventListener("touchstart", (e)=>{ down = true; scratch(e); }, {passive:false});
+  window.addEventListener("touchend", ()=>{ down = false; });
+  canvas.addEventListener("touchmove", scratch, {passive:false});
 })();
 </script>
 
