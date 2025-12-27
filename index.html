@@ -157,6 +157,17 @@ body {
     padding: 4px;
     border-bottom: 1px solid rgba(0,255,195,0.25);
 }
+/* Static Nukem Squirrel character */
+.nukem-squirrel {
+    position: absolute;
+    bottom: 12%;        /* adjust to sit on a platform */
+    left: 6%;           /* move left/right */
+    width: 96px;        /* change size here */
+    height: auto;
+    image-rendering: pixelated;
+    z-index: 5;         /* above background, below UI if needed */
+    pointer-events: none; /* doesn’t block buttons */
+}
 
 .rank { color: #ffeb3b; }
 .completed { color: #00ffc3; text-align: right; }
@@ -166,6 +177,12 @@ body {
 <body>
 
 <div class="hub">
+<!-- Static Nukem Squirrel character -->
+<img
+  src="nukemsuirrel.png"
+  alt="Nukem Squirrel"
+  class="nukem-squirrel"
+/>
 
 <div class="logo"><span class="symbol">¤</span>NOTORIOUS NUKEM SQUIRREL</div>
 
