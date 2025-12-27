@@ -17,7 +17,6 @@ body {
     color: #bffcff;
 }
 
-/* Full-screen hub area */
 .hub {
     position: relative;
     width: 100vw;
@@ -26,7 +25,6 @@ body {
     background: url("business_center_bg.png") no-repeat center/cover;
 }
 
-/* Neon title billboard at the top */
 .logo {
     position: absolute;
     top: 3%;
@@ -51,7 +49,6 @@ body {
     color: #00ff9c;
 }
 
-/* Scratch panel – this is the hidden message area under the foil */
 .scratch-panel {
     position: absolute;
     top: 0%;
@@ -60,17 +57,8 @@ body {
     width: 320px;
     height: 145px;
     background: #111;
-    background-image:
-        repeating-linear-gradient(
-            135deg,
-            rgba(255,255,255,0.05) 0px,
-            rgba(255,255,255,0.05) 2px,
-            rgba(0,0,0,0.0) 2px,
-            rgba(0,0,0,0.0) 5px
-        );
     border-radius: 6px;
-    opacity: 1;
-    z-index: 2;  /* below the scratch canvas */
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -78,10 +66,9 @@ body {
     box-sizing: border-box;
     text-align: center;
     color: #e7ffff;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
 }
 
-/* Scratch-off canvas overlay */
 #scratch-canvas {
     position: absolute;
     top: 0%;
@@ -89,12 +76,10 @@ body {
     transform: translateX(-50%);
     width: 320px;
     height: 145px;
-    z-index: 3;       /* above the scratch-panel */
+    z-index: 3;
     touch-action: none;
-    cursor: pointer;
 }
 
-/* Small “press start” prompt */
 .press-start {
     position: absolute;
     top: 16%;
@@ -110,18 +95,16 @@ body {
     50% { opacity: 0; }
 }
 
-/* Shared styling for menu hotspots */
 .menu-node {
     position: absolute;
     padding: 14px 22px;
     font-size: 1rem;
     background: rgba(0, 0, 0, 0.8);
     border: 2px solid #00ffc3;
-    text-decoration: none;
     color: #e7ffff;
     box-shadow: 0 0 6px #00ffc3;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    text-decoration: none;
 }
 
 .menu-node::before {
@@ -129,191 +112,114 @@ body {
     color: #ffeb3b;
 }
 
-.menu-node:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 0 12px #00ffc3;
+#start-game { bottom: 48%; left: 12%; }
+#training { bottom: 78%; left: 12%; }
+#load-game { bottom: 59%; left: 53%; }
+#arsenal { bottom: 11%; left: 22%; }
+#options { bottom: 29%; left: 53%; }
+#credits { bottom: 18%; left: 66%; }
+#extras { bottom: 71%; right: 7%; }
+
+/* === FLAG SUBMIT PANEL === */
+.flag-panel {
+    position: absolute;
+    bottom: 3%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    border: 2px solid #00ffc3;
+    padding: 12px;
+    z-index: 10;
+    display: flex;
+    gap: 8px;
 }
 
-/* Platform placements (adjust percentages to line up with tiles) */
-
-/* Mid-level – left to right */
-#start-game {
-    bottom: 48%;
-    left: 12%;
+.flag-panel input {
+    background: #000;
+    border: 1px solid #00ffc3;
+    color: #00ffc3;
+    padding: 6px;
+    font-family: monospace;
 }
 
-#training {
-    bottom: 78%;
-    left: 12%;
-}
-
-#load-game {
-    bottom: 59%;
-    left: 53%;
-}
-
-/* Ground level */
-#arsenal {
-    bottom: 11%;
-    left: 22%;
-}
-
-#options {
-    bottom: 29%;
-    left: 53%;
-}
-
-#credits {
-    bottom: 18%;
-    left: 66%;
-}
-
-/* High right platform */
-#extras {
-    bottom: 71%;
-    right: 7%;
+.flag-panel button {
+    background: #00ffc3;
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    font-weight: bold;
 }
 </style>
 </head>
+
 <body>
 
 <div class="hub">
 
-    <!-- Billboard text -->
     <div class="logo">
         <span class="symbol">¤</span> NOTORIOUS NUKEM SQUIRREL
     </div>
 
-    <!-- Scratch panel with hidden message -->
     <div class="scratch-panel">
-        <!-- Put your secret / flag / hint here -->
-        TOP-SECRET BRIEFING:
-        <br>
-        "This is where the secret things will be kept"
+        TOP-SECRET BRIEFING<br>
+        SCRATCH TO REVEAL
     </div>
 
-    <!-- Scratchable image layer on top -->
     <canvas id="scratch-canvas"></canvas>
 
     <div class="press-start">PRESS START TO SPAWN</div>
 
-    <!-- Mid-level “Duke Nukem” style platforms -->
-    <a href="nukem.html" class="menu-node" id="start-game">
-        Hollywood Holocaust – Start Game
-    </a>
+    <a href="nukem.html" class="menu-node" id="start-game">Hollywood Holocaust</a>
+    <a href="#" class="menu-node" id="training">Dark Side</a>
+    <a href="#" class="menu-node" id="load-game">Raw Meat</a>
+    <a href="#" class="menu-node" id="arsenal">L.A Rumble</a>
+    <a href="#" class="menu-node" id="options">Hotel Hell</a>
+    <a href="redlight/door.html" class="menu-node" id="credits">Red Light District</a>
+    <a href="terminal.html" class="menu-node" id="extras">Crash Course</a>
 
-    <a href="nukem.py" class="menu-node" id="training">
-        Dark Side
-    </a>
-
-    <a href="#load" class="menu-node" id="load-game">
-        Raw Meat
-    </a>
-
-    <!-- Ground level props -->
-    <a href="#arsenal" class="menu-node" id="arsenal">
-        L.A Rumble
-    </a>
-
-    <a href="#options" class="menu-node" id="options">
-        Hotel Hell
-    </a>
-
-    <a href="redlight/door.html" class="menu-node" id="credits">
-        Red Light District
-    </a>
-
-    <!-- High right platform / secret area -->
-    <a href="terminal.html" class="menu-node" id="extras">
-        Crash Course
-    </a>
+    <!-- FLAG SUBMIT -->
+    <div class="flag-panel">
+        <input id="username" placeholder="USERNAME">
+        <input id="flag" placeholder="FLAG">
+        <button onclick="submitFlag(1)">SUBMIT</button>
+    </div>
 
 </div>
 
-<!-- Scratch-off behaviour -->
 <script>
-(function () {
-    const canvas = document.getElementById('scratch-canvas');
-    if (!canvas) return;
+const API = "http://5.255.97.141";
 
-    const ctx = canvas.getContext('2d');
+const usernameInput = document.getElementById("username");
+usernameInput.value = localStorage.getItem("ctf_user") || "";
 
-    // Image used as the top scratch layer
-    const foilImage = new Image();
-    foilImage.src = 'nukemsquirrel.png';
+usernameInput.addEventListener("change", () => {
+    localStorage.setItem("ctf_user", usernameInput.value);
+});
 
-    function drawFoil() {
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+async function submitFlag(stage) {
+    const username = usernameInput.value.trim();
+    const flag = document.getElementById("flag").value.trim();
 
-        if (!foilImage.complete) {
-            return;
-        }
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.clearRect(0, 0, rect.width, rect.height);
-        ctx.drawImage(foilImage, 0, 0, rect.width, rect.height);
+    if (!username || !flag) {
+        alert("Username and flag required");
+        return;
     }
 
-    foilImage.onload = drawFoil;
-    window.addEventListener('resize', drawFoil);
-
-    let scratching = false;
-
-    function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        let x, y;
-        if (e.touches && e.touches.length > 0) {
-            x = e.touches[0].clientX;
-            y = e.touches[0].clientY;
-        } else {
-            x = e.clientX;
-            y = e.clientY;
-        }
-        return {
-            x: x - rect.left,
-            y: y - rect.top
-        };
-    }
-
-    function scratch(e) {
-        if (!scratching) return;
-        e.preventDefault();
-        const pos = getPos(e);
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    canvas.addEventListener('mousedown', function (e) {
-        scratching = true;
-        scratch(e);
+    const res = await fetch(`${API}/api/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, stage, flag })
     });
 
-    window.addEventListener('mouseup', function () {
-        scratching = false;
-    });
+    const data = await res.json();
 
-    canvas.addEventListener('mousemove', scratch);
-
-    canvas.addEventListener('touchstart', function (e) {
-        scratching = true;
-        scratch(e);
-    }, { passive: false });
-
-    window.addEventListener('touchend', function () {
-        scratching = false;
-    });
-
-    canvas.addEventListener('touchmove', scratch, { passive: false });
-
-    // Initial draw in case image loads from cache
-    if (foilImage.complete) {
-        drawFoil();
+    if (res.ok) {
+        alert(data.message);
+        console.log("Next stage:", data.next_stage);
+    } else {
+        alert(data.detail);
     }
-})();
+}
 </script>
 
 </body>
