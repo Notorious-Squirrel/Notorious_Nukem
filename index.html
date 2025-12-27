@@ -25,6 +25,7 @@ body {
     background: url("business_center_bg.png") no-repeat center/cover;
 }
 
+/* === TITLE === */
 .logo {
     position: absolute;
     top: 3%;
@@ -33,15 +34,11 @@ body {
     padding: 10px 20px;
     font-size: 2.2rem;
     letter-spacing: 0.12em;
-    text-align: center;
     color: #d56aff;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(0,0,0,0.65);
     border: 4px solid #00f0ff;
-    box-shadow:
-        0 0 10px #b84dff,
-        0 0 25px #8a2be2,
-        0 0 40px #6a00ff;
-    z-index: 1;
+    box-shadow: 0 0 10px #b84dff, 0 0 25px #8a2be2, 0 0 40px #6a00ff;
+    z-index: 2;
 }
 
 .logo span.symbol {
@@ -49,61 +46,54 @@ body {
     color: #00ff9c;
 }
 
+/* === SCRATCH PANEL === */
 .scratch-panel {
     position: absolute;
-    top: 0%;
+    top: 2%;
     left: 75.5%;
     transform: translateX(-50%);
     width: 320px;
     height: 145px;
     background: #111;
     border-radius: 6px;
-    z-index: 2;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
-    box-sizing: border-box;
     text-align: center;
-    color: #e7ffff;
     font-size: 0.75rem;
 }
 
 #scratch-canvas {
     position: absolute;
-    top: 0%;
+    top: 2%;
     left: 75.5%;
     transform: translateX(-50%);
     width: 320px;
     height: 145px;
     z-index: 3;
-    touch-action: none;
 }
 
+/* === PRESS START === */
 .press-start {
     position: absolute;
     top: 16%;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.9rem;
-    text-shadow: 0 0 6px #00f0ff;
-    animation: blink 1s steps(2, start) infinite;
-    z-index: 4;
+    animation: blink 1s steps(2) infinite;
 }
 
 @keyframes blink {
     50% { opacity: 0; }
 }
 
+/* === HUB BUTTONS === */
 .menu-node {
     position: absolute;
     padding: 14px 22px;
-    font-size: 1rem;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0,0,0,0.8);
     border: 2px solid #00ffc3;
     color: #e7ffff;
-    box-shadow: 0 0 6px #00ffc3;
-    cursor: pointer;
     text-decoration: none;
 }
 
@@ -120,37 +110,37 @@ body {
 #credits { bottom: 18%; left: 66%; }
 #extras { bottom: 71%; right: 7%; }
 
-/* === FLAG SUBMIT PANEL === */
+/* === FLAG PANEL === */
 .flag-panel {
     position: absolute;
     bottom: 3%;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0,0,0,0.85);
-    border: 2px solid #00ffc3;
-    padding: 12px;
-    z-index: 10;
     display: flex;
     gap: 8px;
+    padding: 12px;
+    background: rgba(0,0,0,0.85);
+    border: 2px solid #00ffc3;
+    z-index: 10;
 }
 
-.flag-panel input {
+.flag-panel input,
+.flag-panel select {
     background: #000;
     border: 1px solid #00ffc3;
     color: #00ffc3;
     padding: 6px;
-    font-family: monospace;
 }
 
 .flag-panel button {
     background: #00ffc3;
     border: none;
-    cursor: pointer;
     padding: 6px 12px;
     font-weight: bold;
+    cursor: pointer;
 }
 
-/* === LEADERBOARD PANEL === */
+/* === LEADERBOARD === */
 .leaderboard-panel {
     position: absolute;
     top: 55%;
@@ -160,47 +150,16 @@ body {
     background: rgba(0,0,0,0.85);
     border: 2px solid #00ffc3;
     padding: 10px;
-    box-sizing: border-box;
-    z-index: 9;
     font-size: 0.7rem;
 }
 
-.leaderboard-title {
-    text-align: center;
-    margin-bottom: 8px;
-    color: #e7ffff;
-    text-shadow: 0 0 6px rgba(0,255,195,0.55);
-}
-
-#leaderboard {
-    width: 100%;
-    border-collapse: collapse;
-}
-
 #leaderboard td {
-    padding: 6px 4px;
+    padding: 4px;
     border-bottom: 1px solid rgba(0,255,195,0.25);
-    vertical-align: top;
 }
 
-#leaderboard td.rank {
-    width: 30px;
-    color: #ffeb3b;
-}
-
-#leaderboard td.completed {
-    width: 50px;
-    text-align: right;
-    color: #00ffc3;
-}
-
-.leaderboard-meta {
-    margin-top: 8px;
-    opacity: 0.85;
-    font-size: 0.65rem;
-    display: flex;
-    justify-content: space-between;
-}
+.rank { color: #ffeb3b; }
+.completed { color: #00ffc3; text-align: right; }
 </style>
 </head>
 
@@ -208,217 +167,103 @@ body {
 
 <div class="hub">
 
-    <div class="logo">
-        <span class="symbol">¤</span> NOTORIOUS NUKEM SQUIRREL
-    </div>
+<div class="logo"><span class="symbol">¤</span>NOTORIOUS NUKEM SQUIRREL</div>
 
-    <div class="scratch-panel">
-        TOP-SECRET BRIEFING<br>
-        SCRATCH TO REVEAL
-    </div>
+<div class="scratch-panel">
+TOP-SECRET BRIEFING<br>SCRATCH TO REVEAL
+</div>
+<canvas id="scratch-canvas"></canvas>
 
-    <canvas id="scratch-canvas"></canvas>
+<div class="press-start">PRESS START TO SPAWN</div>
 
-    <div class="press-start">PRESS START TO SPAWN</div>
+<a href="nukem.html" class="menu-node" id="start-game">Hollywood Holocaust</a>
+<a href="#" class="menu-node" id="training">Dark Side</a>
+<a href="#" class="menu-node" id="load-game">Raw Meat</a>
+<a href="#" class="menu-node" id="arsenal">L.A Rumble</a>
+<a href="#" class="menu-node" id="options">Hotel Hell</a>
+<a href="redlight/door.html" class="menu-node" id="credits">Red Light District</a>
+<a href="terminal.html" class="menu-node" id="extras">Crash Course</a>
 
-    <a href="nukem.html" class="menu-node" id="start-game">Hollywood Holocaust</a>
-    <a href="#" class="menu-node" id="training">Dark Side</a>
-    <a href="#" class="menu-node" id="load-game">Raw Meat</a>
-    <a href="#" class="menu-node" id="arsenal">L.A Rumble</a>
-    <a href="#" class="menu-node" id="options">Hotel Hell</a>
-    <a href="redlight/door.html" class="menu-node" id="credits">Red Light District</a>
-    <a href="terminal.html" class="menu-node" id="extras">Crash Course</a>
+<!-- LEADERBOARD -->
+<div class="leaderboard-panel">
+<b>LEADERBOARD</b>
+<table id="leaderboard"></table>
+</div>
 
-    <!-- LEADERBOARD -->
-    <div class="leaderboard-panel">
-        <div class="leaderboard-title">LEADERBOARD</div>
-        <table id="leaderboard"></table>
-        <div class="leaderboard-meta">
-            <span id="lb-status">Loading…</span>
-            <span id="lb-updated"></span>
-        </div>
-    </div>
-
-    <!-- FLAG SUBMIT -->
-    <div class="flag-panel">
-        <input id="username" placeholder="USERNAME">
-        <input id="flag" placeholder="FLAG">
-        <button onclick="submitFlag(1)">SUBMIT</button>
-    </div>
+<!-- FLAG SUBMIT -->
+<div class="flag-panel">
+<input id="username" placeholder="USERNAME">
+<select id="stage">
+<option value="1">STAGE 1</option>
+<option value="2">STAGE 2</option>
+<option value="3">STAGE 3</option>
+<option value="4">STAGE 4</option>
+<option value="5">STAGE 5</option>
+</select>
+<input id="flag" placeholder="FLAG">
+<button onclick="submitFlag()">SUBMIT</button>
+</div>
 
 </div>
 
 <script>
 const API = "https://api.notorioussquirrel.com";
+const userEl = document.getElementById("username");
+const stageEl = document.getElementById("stage");
 
-const usernameInput = document.getElementById("username");
-usernameInput.value = localStorage.getItem("ctf_user") || "";
+userEl.value = localStorage.getItem("ctf_user") || "";
+stageEl.value = localStorage.getItem("ctf_stage") || "1";
 
-usernameInput.addEventListener("change", () => {
-    localStorage.setItem("ctf_user", usernameInput.value);
-});
+userEl.onchange = () => localStorage.setItem("ctf_user", userEl.value);
+stageEl.onchange = () => localStorage.setItem("ctf_stage", stageEl.value);
 
-async function submitFlag(stage) {
-    const username = usernameInput.value.trim();
-    const flag = document.getElementById("flag").value.trim();
-
-    if (!username || !flag) {
-        alert("Username and flag required");
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API}/api/submit`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, stage, flag })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-            alert(data.message);
-            console.log("Next stage:", data.next_stage);
-            // Refresh leaderboard immediately after a successful submit
-            loadLeaderboard();
-        } else {
-            alert(data.detail || "Request failed");
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Could not reach the CTF server.");
-    }
-}
-
-/* ===== Leaderboard rendering ===== */
-function timeNowHHMM() {
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${hh}:${mm}`;
+async function submitFlag() {
+  const res = await fetch(`${API}/api/submit`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      username: userEl.value,
+      stage: Number(stageEl.value),
+      flag: document.getElementById("flag").value
+    })
+  });
+  const data = await res.json();
+  alert(res.ok ? data.message : data.detail);
+  loadLeaderboard();
 }
 
 async function loadLeaderboard() {
-    const statusEl = document.getElementById("lb-status");
-    const updatedEl = document.getElementById("lb-updated");
-    const table = document.getElementById("leaderboard");
-
-    statusEl.textContent = "Loading…";
-
-    try {
-        const res = await fetch(`${API}/api/leaderboard`, { method: "GET" });
-        const data = await res.json();
-
-        table.innerHTML = "";
-
-        if (!Array.isArray(data) || data.length === 0) {
-            table.innerHTML = `<tr><td colspan="3">No entries yet.</td></tr>`;
-            statusEl.textContent = "Ready";
-            updatedEl.textContent = timeNowHHMM();
-            return;
-        }
-
-        data.slice(0, 10).forEach((row, idx) => {
-            const username = String(row.username ?? "").slice(0, 18);
-            const completed = Number(row.completed ?? 0);
-
-            table.innerHTML += `
-              <tr>
-                <td class="rank">#${idx + 1}</td>
-                <td>${username}</td>
-                <td class="completed">${completed}</td>
-              </tr>`;
-        });
-
-        statusEl.textContent = "Ready";
-        updatedEl.textContent = timeNowHHMM();
-    } catch (err) {
-        console.error(err);
-        statusEl.textContent = "Offline";
-        updatedEl.textContent = "";
-        table.innerHTML = `<tr><td colspan="3">Leaderboard unavailable.</td></tr>`;
-    }
+  const table = document.getElementById("leaderboard");
+  const res = await fetch(`${API}/api/leaderboard`);
+  const data = await res.json();
+  table.innerHTML = "";
+  data.forEach((r,i)=>{
+    table.innerHTML += `<tr>
+      <td class="rank">#${i+1}</td>
+      <td>${r.username}</td>
+      <td class="completed">${r.completed}</td>
+    </tr>`;
+  });
 }
-
-// Initial load + refresh every 10 seconds
 loadLeaderboard();
-setInterval(loadLeaderboard, 10000);
+setInterval(loadLeaderboard,10000);
 </script>
 
-<!-- Scratch-off behaviour -->
 <script>
-(function () {
-    const canvas = document.getElementById('scratch-canvas');
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-
-    const foilImage = new Image();
-    foilImage.src = 'nukemsquirrel.png';
-
-    function drawFoil() {
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-
-        if (!foilImage.complete) return;
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.clearRect(0, 0, rect.width, rect.height);
-        ctx.drawImage(foilImage, 0, 0, rect.width, rect.height);
-    }
-
-    foilImage.onload = drawFoil;
-    window.addEventListener('resize', drawFoil);
-
-    let scratching = false;
-
-    function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        let x, y;
-        if (e.touches && e.touches.length > 0) {
-            x = e.touches[0].clientX;
-            y = e.touches[0].clientY;
-        } else {
-            x = e.clientX;
-            y = e.clientY;
-        }
-        return { x: x - rect.left, y: y - rect.top };
-    }
-
-    function scratch(e) {
-        if (!scratching) return;
-        e.preventDefault();
-        const pos = getPos(e);
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    canvas.addEventListener('mousedown', function (e) {
-        scratching = true;
-        scratch(e);
-    });
-
-    window.addEventListener('mouseup', function () {
-        scratching = false;
-    });
-
-    canvas.addEventListener('mousemove', scratch);
-
-    canvas.addEventListener('touchstart', function (e) {
-        scratching = true;
-        scratch(e);
-    }, { passive: false });
-
-    window.addEventListener('touchend', function () {
-        scratching = false;
-    });
-
-    canvas.addEventListener('touchmove', scratch, { passive: false });
-
-    if (foilImage.complete) drawFoil();
+(function(){
+const c=document.getElementById("scratch-canvas"),x=c.getContext("2d");
+const img=new Image(); img.src="nukemsquirrel.png";
+img.onload=()=>{c.width=320;c.height=145;x.drawImage(img,0,0,320,145);}
+let d=false;
+c.onmousedown=()=>d=true;
+window.onmouseup=()=>d=false;
+c.onmousemove=e=>{
+ if(!d)return;
+ x.globalCompositeOperation="destination-out";
+ x.beginPath();
+ x.arc(e.offsetX,e.offsetY,18,0,Math.PI*2);
+ x.fill();
+};
 })();
 </script>
 
