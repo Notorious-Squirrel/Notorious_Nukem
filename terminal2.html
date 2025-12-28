@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Notorious Squirrel // Linux Terminal</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;
+        color: #00ff9c;
+        font-family: monospace;
+    }
+
+    #wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+
+    #terminal {
+        flex: 1;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+
+    #input-line {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        border-top: 1px solid #00ff9c;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+
+    #prompt {
+        white-space: pre;
+    }
+
+    #cmdline {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #00ff9c;
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    ::selection {
+        background: #00ff9c;
+        color: #000;
+    }
+
+    /* === Nano overlay === */
+    #nanoOverlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        color: #00ff9c;
+        font-family: monospace;
+        padding: 10px;
+        display: none;
+        flex-direction: column;
+        box-sizing: border-box;
+    }
+
+    #nanoEditor {
+        flex: 1;
+        white-space: pre-wrap;
+        outline: none;
+        overflow-y: auto;
+        margin: 4px 0;
+    }
+
+    #nanoStatus {
+        background: #003322;
+        padding: 2px 4px;
+    }
+
+    #nanoHelp {
+        background: #002211;
+        padding: 2px 4px;
+        font-size: 0.9rem;
+    }
+</style>
+</head>
+<body>
+<div id="wrapper">
+    <div id="terminal"></div>
+    <div id="input-line">
+        <span id="prompt"></span>
+        <input id="cmdline" autocomplete="off" autofocus>
+    </div>
+</div>
+
+<!-- Nano overlay UI -->
+<div id="nanoOverlay">
+    <div id="nanoStatus"></div>
+    <div id="nanoEditor" contenteditable="true"></div>
+    <div id="nanoHelp">^S Save   ^X Exit</div>
+</div>
+
+<script>
+/* ========= CONFIG ========= */
+const USERNAME = "NukemSquirell";
+const HOSTNAME = "blackwire";
+
+/* ========= HIDDEN GAME FILE (looks like python, runs as JS game via python3 command) ========= */
+const HIDDEN_GAME_PY = `#!/usr/bin/env python3
+# /etc/.game.py  (hidden)
+# Nukem Squirrel: Terminal Ops (Stage 3)
+#
+# NOTE: In this CTF terminal (browser), Python isn't really executed.
+# The 'python3 /etc/.game.py' command triggers the embedded game runner.
+#
+# Objective:
+# - Get the 64-char token from the end screen
+# - Submit it to /stage3/submit
+#
+# Hint:
+# - Type 'python3 /etc/.game.py' to run.
+`;
+
+/* Fake filesystem structure */
+const FS_ROOT = {
+    type: "dir",
+    children: {
+        "home": {
+            type: "dir",
+            children: {
+                "notoruss": {
+                    type: "dir",
+                    children: {
+                        "readme.txt": {
+                            type: "file",
+                            content:
+`Welcome, ${USERNAME}.
+
+This is a simulated Linux terminal for your CTF.
+Explore the filesystem with 'ls' and 'cd'.
+
+Hint: real hackers dig around /opt and /var...
+`
+                        },
+                        "notes.txt": {
+                            type: "file",
+                            content:
+`Things to do:
+- Build Notorious Nukem Game Boy cart
+- Hide flags where no one looks
+- Profit`
+                        }
+                    }
+                }
+            }
+        },
+        "etc": {
+            type: "dir",
+            children: {
+                "issue": {
+                    type: "file",
+                    content: "Notorious OS 1.0 (Blackwire Build)\n"
+                },
+                "motd": {
+                    type: "file",
+                    content:
+`Welcome to Blackwire Node-01
+Authorised squirrels only.`
+                },
+                ".game.py": {   // <- hidden: only visible in ls -a / ls -al
+                    type: "file",
+                    content: HIDDEN_GAME_PY
+                }
+            }
+        },
+        "var": {
+            type: "dir",
+            children: {
+                "log": {
+                    type: "dir",
+                    children: {
+                        "auth.log": {
+                            type: "file",
+                            content:
+`Dec  6 13:37 blackwire login[1337]: Accepted password for ${USERNAME}`
+                        }
+                    }
+                }
+            }
+        },
+        "bin": {
+            type: "dir",
+            children: {
+                "ls": { type: "file", content: "ELF 64-bit LSB executable" },
+                "cat": { type: "file", content: "ELF 64-bit LSB executable" }
+            }
+        },
+        "opt": {
+            type: "dir",
+            children: {
+                "ctf": {
+                    type: "dir",
+                    children: {
+                        "flag.txt": {
+                            type: "file",
+                            content: "FLAG{NOTORIOUS-SQUIRREL-TERMINAL-01}"
+                        },
+                        "hint.txt": {
+                            type: "file",
+                            content: "You’re closer than you think. Did you cat the right file?"
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+/* ========= STATE ========= */
+let cwd = ["home", "notoruss"];  // current working directory as path segments (relative to root)
+const history = [];
+let historyIndex = -1;
+
+/* Nano state */
+let nanoActive = false;
+let nanoFilePath = null;
+let nanoNode = null;
+
+/* ========= GAME STATE (Stage 3 text game) ========= */
+let gameActive = false;
+let game = null; // { state, hp, inv, token, ... }
+
+/* ========= DOM ========= */
+const termEl = document.getElementById("terminal");
+const promptEl = document.getElementById("prompt");
+const cmdEl = document.getElementById("cmdline");
+
+const nanoOverlay = document.getElementById("nanoOverlay");
+const nanoEditor = document.getElementById("nanoEditor");
+const nanoStatus = document.getElementById("nanoStatus");
+
+/* ========= HELPERS ========= */
+
+function print(text = "") {
+    termEl.textContent += text + "\n";
+    termEl.scrollTop = termEl.scrollHeight;
+}
+
+function getPathString(pathArr) {
+    if (!pathArr.length) return "/";
+    return "/" + pathArr.join("/");
+}
+
+function updatePrompt() {
+    const pathStr = getPathString(cwd);
+    if (gameActive) {
+        promptEl.textContent = `[NUKEM]@${HOSTNAME}:${pathStr}$ `;
+    } else {
+        promptEl.textContent = `${USERNAME}@${HOSTNAME}:${pathStr}$ `;
+    }
+}
+
+function resolvePath(pathStr) {
+    if (!pathStr || pathStr === ".") return [...cwd];
+
+    let parts = pathStr.split("/").filter(Boolean);
+    let result;
+
+    if (pathStr.startsWith("/")) {
+        result = [];
+    } else {
+        result = [...cwd];
+    }
+
+    for (const part of parts) {
+        if (part === ".") continue;
+        if (part === "..") {
+            if (result.length > 0) result.pop();
+        } else {
+            result.push(part);
+        }
+    }
+    return result;
+}
+
+function getNode(pathArr) {
+    let node = FS_ROOT;
+    for (const segment of pathArr) {
+        if (!node.children || !node.children[segment]) {
+            return null;
+        }
+        node = node.children[segment];
+    }
+    return node;
+}
+
+function ensureDir(node) {
+    return node && node.type === "dir";
+}
+
+/* Long listing formatter for ls -l/-al */
+function formatLongEntry(name, nodeOrType) {
+    const isDir =
+        nodeOrType === "dir" ||
+        (nodeOrType && nodeOrType.type === "dir");
+    const typeChar = isDir ? "d" : "-";
+
+    const perms = typeChar + "rwxr-xr-x";
+    const links = "1";
+    const owner = USERNAME;
+    const group = USERNAME;
+
+    let size = 0;
+    if (nodeOrType && nodeOrType.type === "file") {
+        size = (nodeOrType.content || "").length;
+    } else {
+        size = 4096;
+    }
+
+    const date = "Dec  6 13:37"; // fake static timestamp
+
+    return `${perms} ${links} ${owner} ${group} ${String(size).padStart(5, " ")} ${date} ${name}`;
+}
+
+function randHex64() {
+    const hex = "0123456789abcdef";
+    let out = "";
+    for (let i = 0; i < 64; i++) out += hex[Math.floor(Math.random() * 16)];
+    return out;
+}
+
+/* ========= COMMAND IMPLEMENTATIONS ========= */
+
+function cmd_help() {
+    print(
+`Available commands:
+  help          Show this help
+  ls [opts]     List directory contents (-a, -l, -al)
+  cd [path]     Change directory
+  pwd           Print working directory
+  cat <file>    Show file contents
+  mkdir <name>  Create directory
+  touch <name>  Create empty file
+  rm <file>     Remove file
+  rmdir <name>  Remove empty directory
+  echo [text]   Print text
+  whoami        Show current user
+  uname [-a]    Show system info
+  nano <file>   Edit file
+  python3 <f>   Run a python file (CTF shim)
+  clear         Clear the screen`
+    );
+}
+
+function cmd_pwd() {
+    print(getPathString(cwd));
+}
+
+function cmd_ls(args) {
+    let showAll = false;  // -a
+    let longFmt = false;  // -l
+    const paths = [];
+
+    for (const a of args) {
+        if (a.startsWith("-")) {
+            if (a.includes("a")) showAll = true;
+            if (a.includes("l")) longFmt = true;
+        } else {
+            paths.push(a);
+        }
+    }
+
+    const targetPath = paths[0] ? resolvePath(paths[0]) : cwd;
+    const node = getNode(targetPath);
+
+    if (!node) {
+        const label = paths[0] || "";
+        print(`ls: cannot access '${label}': No such file or directory`);
+        return;
+    }
+
+    if (node.type === "file") {
+        const name = paths[0] || targetPath[targetPath.length - 1];
+        if (longFmt) {
+            print(formatLongEntry(name, node));
+        } else {
+            print(name);
+        }
+        return;
+    }
+
+    const entries = [];
+
+    if (showAll) {
+        entries.push({ name: ".", special: "dot" });
+        if (targetPath.length > 0) {
+            entries.push({ name: "..", special: "dotdot" });
+        }
+    }
+
+    const names = Object.keys(node.children).sort();
+    for (const name of names) {
+        if (!showAll && name.startsWith(".")) continue;
+        entries.push({ name, node: node.children[name] });
+    }
+
+    if (longFmt) {
+        for (const e of entries) {
+            if (e.special === "dot") {
+                print(formatLongEntry(".", "dir"));
+            } else if (e.special === "dotdot") {
+                print(formatLongEntry("..", "dir"));
+            } else {
+                print(formatLongEntry(e.name, e.node));
+            }
+        }
+    } else {
+        print(entries.map(e => e.name).join("  "));
+    }
+}
+
+function cmd_cd(args) {
+    const dest = args[0] || `/home/${USERNAME}`;
+    const targetPath = resolvePath(dest);
+    const node = getNode(targetPath);
+    if (!node || node.type !== "dir") {
+        print(`bash: cd: ${dest}: No such file or directory`);
+        return;
+    }
+    cwd = targetPath;
+}
+
+function cmd_cat(args) {
+    if (!args[0]) {
+        print("cat: missing file operand");
+        return;
+    }
+    const targetPath = resolvePath(args[0]);
+    const node = getNode(targetPath);
+    if (!node) {
+        print(`cat: ${args[0]}: No such file or directory`);
+        return;
+    }
+    if (node.type !== "file") {
+        print(`cat: ${args[0]}: Is a directory`);
+        return;
+    }
+    print(node.content);
+}
+
+function cmd_echo(args) {
+    print(args.join(" "));
+}
+
+function cmd_whoami() {
+    print(USERNAME);
+}
+
+function cmd_uname(args) {
+    if (args.length && args[0] === "-a") {
+        print(`NotoriousOS ${HOSTNAME} 1.0 #1337 SMP x86_64 GNU/Linux`);
+    } else {
+        print("NotoriousOS");
+    }
+}
+
+function cmd_clear() {
+    termEl.textContent = "";
+}
+
+function cmd_mkdir(args) {
+    if (!args[0]) {
+        print("mkdir: missing operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    if (parent.children[name]) {
+        print(`mkdir: cannot create directory '${name}': File exists`);
+        return;
+    }
+    parent.children[name] = { type: "dir", children: {} };
+}
+
+function cmd_touch(args) {
+    if (!args[0]) {
+        print("touch: missing file operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    if (!parent.children[name]) {
+        parent.children[name] = { type: "file", content: "" };
+    }
+}
+
+function cmd_rm(args) {
+    if (!args[0]) {
+        print("rm: missing operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    const node = parent.children[name];
+    if (!node) {
+        print(`rm: cannot remove '${name}': No such file`);
+        return;
+    }
+    if (node.type === "dir") {
+        print(`rm: cannot remove '${name}': Is a directory`);
+        return;
+    }
+    delete parent.children[name];
+}
+
+function cmd_rmdir(args) {
+    if (!args[0]) {
+        print("rmdir: missing operand");
+        return;
+    }
+    const name = args[0];
+    const parent = getNode(cwd);
+    if (!ensureDir(parent)) return;
+    const node = parent.children[name];
+    if (!node) {
+        print(`rmdir: failed to remove '${name}': No such file or directory`);
+        return;
+    }
+    if (node.type !== "dir") {
+        print(`rmdir: failed to remove '${name}': Not a directory`);
+        return;
+    }
+    if (Object.keys(node.children).length > 0) {
+        print(`rmdir: failed to remove '${name}': Directory not empty`);
+        return;
+    }
+    delete parent.children[name];
+}
+
+/* ========= NANO IMPLEMENTATION ========= */
+
+function openNano(pathStr) {
+    nanoFilePath = resolvePath(pathStr);
+    nanoNode = getNode(nanoFilePath);
+
+    const filename = pathStr.split("/").pop();
+
+    if (!nanoNode) {
+        const parentPath = nanoFilePath.slice(0, -1);
+        const parent = getNode(parentPath);
+        if (parent && parent.type === "dir") {
+            parent.children[filename] = { type: "file", content: "" };
+            nanoNode = parent.children[filename];
+        } else {
+            print(`nano: cannot create '${pathStr}': No such directory`);
+            nanoFilePath = null;
+            nanoNode = null;
+            return;
+        }
+    }
+
+    if (nanoNode.type !== "file") {
+        print(`nano: '${pathStr}' is not a file`);
+        nanoFilePath = null;
+        nanoNode = null;
+        return;
+    }
+
+    nanoActive = true;
+    nanoEditor.innerText = nanoNode.content || "";
+    nanoStatus.innerText = `Editing ${filename}`;
+    nanoOverlay.style.display = "flex";
+    nanoEditor.focus();
+}
+
+function closeNano(save) {
+    if (save && nanoNode) {
+        nanoNode.content = nanoEditor.innerText;
+    }
+    nanoActive = false;
+    nanoOverlay.style.display = "none";
+    nanoFilePath = null;
+    nanoNode = null;
+    nanoEditor.innerText = "";
+    cmdEl.focus();
+}
+
+document.addEventListener("keydown", (e) => {
+    if (!nanoActive) return;
+
+    if (e.ctrlKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        nanoStatus.innerText = "Saved";
+        if (nanoNode) nanoNode.content = nanoEditor.innerText;
+        return;
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        closeNano(true);
+        return;
+    }
+});
+
+/* ========= GAME (runs inside terminal) ========= */
+
+function startNukemGame() {
+    gameActive = true;
+    game = {
+        state: "intro",
+        hp: 3,
+        inv: new Set(),
+        token: null
+    };
+
+    print("");
+    print("==============================================");
+    print("   NUKEM SQUIRREL: TERMINAL OPS (STAGE 3)");
+    print("==============================================");
+    print("Type choices exactly. Type 'exit' to quit the game.");
+    print("");
+    print("It’s 02:06. Neon rain hits the window like static.");
+    print("Blackwire’s grid is infected. The city’s network is screaming.");
+    print("");
+    print("You jack into the backroom node. Three doors render on screen:");
+    print("  1) armory");
+    print("  2) vents");
+    print("  3) street");
+    print("");
+    print("Where do you go?");
+    updatePrompt();
+}
+
+function endGameWin() {
+    game.token = randHex64();
+    print("");
+    print(">>> MISSION COMPLETE.");
+    print("You ripped the parasite out of Blackwire’s spine.");
+    print("");
+    print("YOUR STAGE 3 TOKEN (64-hex):");
+    print(game.token);
+    print("");
+    print("Submit it to your server endpoint:");
+    print("  POST /stage3/submit  {\"token\":\"<token>\"}");
+    print("");
+    print("Type 'exit' to return to the terminal.");
+}
+
+function endGameDeath(reason) {
+    print("");
+    print(">>> YOU DIED.");
+    print(reason);
+    print("Type 'exit' to return to the terminal.");
+}
+
+function handleGameInput(raw) {
+    const input = raw.trim().toLowerCase();
+    if (!input) return;
+
+    if (input === "exit") {
+        print("[game] exiting…");
+        gameActive = false;
+        game = null;
+        return;
+    }
+
+    // Simple state machine
+    switch (game.state) {
+        case "intro":
+            if (input === "1" || input === "armory") {
+                game.state = "armory";
+                print("");
+                print("Armory cache unlocked: you grab a CHROME ACORN BLASTER.");
+                game.inv.add("blaster");
+                print("Two routes appear:");
+                print("  1) hub");
+                print("  2) vents");
+                print("Choose:");
+            } else if (input === "2" || input === "vents") {
+                game.state = "vents";
+                print("");
+                print("You crawl into the vents. It’s hot. It’s tight. It smells like burnt silicon.");
+                print("Ahead:");
+                print("  1) drop");
+                print("  2) crawl");
+                print("Choose:");
+            } else if (input === "3" || input === "street") {
+                game.state = "street";
+                print("");
+                print("Street level. Neon filth. A billboard glitches: 'WELCOME HOME, SQUIRREL'.");
+                print("A drone swarm approaches.");
+                print("  1) fight");
+                print("  2) run");
+                print("Choose:");
+            } else {
+                print("Pick: armory / vents / street");
+            }
+            break;
+
+        case "armory":
+            if (input === "1" || input === "hub") {
+                game.state = "hub";
+                print("");
+                print("You enter the NETWORK HUB. Three terminals pulse:");
+                print("  1) purge");
+                print("  2) spoof");
+                print("  3) overload");
+                print("Choose:");
+            } else if (input === "2" || input === "vents") {
+                game.state = "vents";
+                print("");
+                print("Vents again. The metal hums like it’s alive.");
+                print("Ahead:");
+                print("  1) drop");
+                print("  2) crawl");
+                print("Choose:");
+            } else {
+                print("Pick: hub / vents");
+            }
+            break;
+
+        case "vents":
+            if (input === "1" || input === "drop") {
+                // Trap door / spikes death (one of your requested dead ends)
+                endGameDeath("A trap hatch snaps open. You drop into a spike pit. The system logs your last breath.");
+                game.state = "dead";
+            } else if (input === "2" || input === "crawl") {
+                game.state = "clown";
+                print("");
+                print("You crawl forward… and the vent opens into a maintenance bay.");
+                print("A grinning IT clown unfolds from the dark, chewing cables like spaghetti.");
+                print("It lunges for your feet.");
+                print("  1) shoot");
+                print("  2) kick");
+                print("Choose:");
+            } else {
+                print("Pick: drop / crawl");
+            }
+            break;
+
+        case "clown":
+            if (input === "1" || input === "shoot") {
+                if (game.inv.has("blaster")) {
+                    print("");
+                    print("You fire the Chrome Acorn Blaster.");
+                    print("The clown’s visor shatters into pixels. It collapses, screeching modem noises.");
+                    game.state = "hub";
+                    print("");
+                    print("A service door opens to the NETWORK HUB.");
+                    print("Terminals pulse:");
+                    print("  1) purge");
+                    print("  2) spoof");
+                    print("  3) overload");
+                    print("Choose:");
+                } else {
+                    // If they didn't get blaster, clown wins (dead end #2)
+                    endGameDeath("Click. Empty hands. The IT clown laughs and eats your feet like crunchy packets.");
+                    game.state = "dead";
+                }
+            } else if (input === "2" || input === "kick") {
+                endGameDeath("Bad move. The IT clown bites down. Your feet are gone. You bleed out in the dark.");
+                game.state = "dead";
+            } else {
+                print("Pick: shoot / kick");
+            }
+            break;
+
+        case "street":
+            if (input === "1" || input === "fight") {
+                print("");
+                print("You fight through drones. Sparks rain. You take a hit.");
+                game.hp -= 1;
+                if (game.hp <= 0) {
+                    endGameDeath("A drone detonates at your chest. Neon goes black.");
+                    game.state = "dead";
+                } else {
+                    print(`HP remaining: ${game.hp}`);
+                    print("You find a service ladder up to the HUB.");
+                    game.state = "hub";
+                    print("");
+                    print("Terminals pulse:");
+                    print("  1) purge");
+                    print("  2) spoof");
+                    print("  3) overload");
+                    print("Choose:");
+                }
+            } else if (input === "2" || input === "run") {
+                print("");
+                print("You sprint, vaulting trash piles. A door slams behind you—HUB access.");
+                game.state = "hub";
+                print("");
+                print("Terminals pulse:");
+                print("  1) purge");
+                print("  2) spoof");
+                print("  3) overload");
+                print("Choose:");
+            } else {
+                print("Pick: fight / run");
+            }
+            break;
+
+        case "hub":
+            if (input === "1" || input === "purge") {
+                // Win condition path
+                endGameWin();
+                game.state = "won";
+            } else if (input === "2" || input === "spoof") {
+                print("");
+                print("You spoof the node. It works… briefly.");
+                print("The parasite adapts. You need a real purge.");
+                print("Choose: purge / overload");
+            } else if (input === "3" || input === "overload") {
+                print("");
+                print("You overload the grid. Everything screams.");
+                print("You’re alive… but the infection survives.");
+                print("Choose: purge");
+            } else {
+                print("Pick: purge / spoof / overload");
+            }
+            break;
+
+        case "won":
+        case "dead":
+            print("Type 'exit' to return to the terminal.");
+            break;
+
+        default:
+            print("Type 'exit' to return.");
+            break;
+    }
+}
+
+/* ========= python3 shim ========= */
+
+function cmd_python3(args) {
+    if (!args[0]) {
+        print("python3: missing file operand");
+        return;
+    }
+    const targetPath = resolvePath(args[0]);
+    const node = getNode(targetPath);
+
+    if (!node) {
+        print(`python3: can't open file '${args[0]}': [Errno 2] No such file or directory`);
+        return;
+    }
+    if (node.type !== "file") {
+        print(`python3: '${args[0]}' is not a file`);
+        return;
+    }
+
+    const pathStr = "/" + targetPath.join("/");
+    if (pathStr === "/etc/.game.py") {
+        startNukemGame();
+        return;
+    }
+
+    print("python3: this terminal is simulated (browser). Only specific CTF scripts can run.");
+}
+
+/* ========= COMMAND DISPATCH ========= */
+
+function runCommand(line) {
+    if (!line.trim()) return;
+
+    // If game is active, route everything into the game handler
+    if (gameActive) {
+        handleGameInput(line);
+        return;
+    }
+
+    history.push(line);
+    historyIndex = history.length;
+
+    const parts = line.trim().split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1);
+
+    switch (cmd) {
+        case "help":      cmd_help(); break;
+        case "pwd":       cmd_pwd(); break;
+        case "ls":        cmd_ls(args); break;
+        case "cd":        cmd_cd(args); break;
+        case "cat":       cmd_cat(args); break;
+        case "echo":      cmd_echo(args); break;
+        case "whoami":    cmd_whoami(); break;
+        case "uname":     cmd_uname(args); break;
+        case "clear":     cmd_clear(); break;
+        case "mkdir":     cmd_mkdir(args); break;
+        case "touch":     cmd_touch(args); break;
+        case "rm":        cmd_rm(args); break;
+        case "rmdir":     cmd_rmdir(args); break;
+        case "nano":
+            if (!args[0]) {
+                print("nano: missing file operand");
+            } else {
+                openNano(args[0]);
+            }
+            break;
+        case "python3":
+            cmd_python3(args);
+            break;
+        case "":
+            break;
+        default:
+            print(`bash: ${cmd}: command not found`);
+    }
+}
+
+/* ========= INPUT HANDLING ========= */
+
+cmdEl.addEventListener("keydown", (e) => {
+    if (nanoActive) return;
+
+    if (e.key === "Enter") {
+        const input = cmdEl.value;
+        const currentPrompt = promptEl.textContent;
+        print(currentPrompt + input);
+        runCommand(input);
+        cmdEl.value = "";
+        updatePrompt();
+    } else if (e.key === "ArrowUp") {
+        if (history.length === 0) return;
+        if (historyIndex > 0) historyIndex--;
+        cmdEl.value = history[historyIndex] || "";
+        e.preventDefault();
+    } else if (e.key === "ArrowDown") {
+        if (history.length === 0) return;
+        if (historyIndex < history.length - 1) {
+            historyIndex++;
+            cmdEl.value = history[historyIndex];
+        } else {
+            historyIndex = history.length;
+            cmdEl.value = "";
+        }
+        e.preventDefault();
+    }
+});
+
+/* ========= INIT ========= */
+
+function init() {
+    print(`NotoriousOS (Linux terminal)
+Type 'help' for available commands.
+
+`);
+    updatePrompt();
+    cmdEl.focus();
+}
+
+init();
+</script>
+</body>
+</html>
