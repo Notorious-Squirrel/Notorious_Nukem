@@ -4,104 +4,91 @@
 <meta charset="UTF-8">
 <title>Notorious Squirrel // Linux Terminal</title>
 <style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        background: #000;
-        color: #00ff9c;
-        font-family: monospace;
-    }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000;
+    color: #00ff9c;
+    font-family: monospace;
+  }
 
-    #wrapper {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        padding: 10px;
-        box-sizing: border-box;
-    }
+  #wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 10px;
+    box-sizing: border-box;
+  }
 
-    #terminal {
-        flex: 1;
-        overflow-y: auto;
-        white-space: pre-wrap;
-    }
+  #terminal {
+    flex: 1;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
 
-    #input-line {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        border-top: 1px solid #00ff9c;
-        padding-top: 5px;
-        margin-top: 5px;
-    }
+  #input-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-top: 1px solid #00ff9c;
+    padding-top: 5px;
+    margin-top: 5px;
+  }
 
-    #prompt {
-        white-space: pre;
-    }
+  #prompt { white-space: pre; }
 
-    #cmdline {
-        flex: 1;
-        background: transparent;
-        border: none;
-        outline: none;
-        color: #00ff9c;
-        font-family: inherit;
-        font-size: 1rem;
-    }
+  #cmdline {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #00ff9c;
+    font-family: inherit;
+    font-size: 1rem;
+  }
 
-    ::selection {
-        background: #00ff9c;
-        color: #000;
-    }
+  ::selection { background: #00ff9c; color: #000; }
 
-    /* === Nano overlay === */
-    #nanoOverlay {
-        position: fixed;
-        inset: 0;
-        background: #000;
-        color: #00ff9c;
-        font-family: monospace;
-        padding: 10px;
-        display: none;
-        flex-direction: column;
-        box-sizing: border-box;
-    }
+  /* === Nano overlay === */
+  #nanoOverlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    color: #00ff9c;
+    font-family: monospace;
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
 
-    #nanoEditor {
-        flex: 1;
-        white-space: pre-wrap;
-        outline: none;
-        overflow-y: auto;
-        margin: 4px 0;
-    }
+  #nanoEditor {
+    flex: 1;
+    white-space: pre-wrap;
+    outline: none;
+    overflow-y: auto;
+    margin: 4px 0;
+  }
 
-    #nanoStatus {
-        background: #003322;
-        padding: 2px 4px;
-    }
-
-    #nanoHelp {
-        background: #002211;
-        padding: 2px 4px;
-        font-size: 0.9rem;
-    }
+  #nanoStatus { background: #003322; padding: 2px 4px; }
+  #nanoHelp   { background: #002211; padding: 2px 4px; font-size: 0.9rem; }
 </style>
 </head>
 <body>
 <div id="wrapper">
-    <div id="terminal"></div>
-    <div id="input-line">
-        <span id="prompt"></span>
-        <input id="cmdline" autocomplete="off" autofocus>
-    </div>
+  <div id="terminal"></div>
+  <div id="input-line">
+    <span id="prompt"></span>
+    <input id="cmdline" autocomplete="off" autofocus>
+  </div>
 </div>
 
 <!-- Nano overlay UI -->
 <div id="nanoOverlay">
-    <div id="nanoStatus"></div>
-    <div id="nanoEditor" contenteditable="true"></div>
-    <div id="nanoHelp">^S Save   ^X Exit</div>
+  <div id="nanoStatus"></div>
+  <div id="nanoEditor" contenteditable="true"></div>
+  <div id="nanoHelp">^S Save   ^X Exit</div>
 </div>
 
 <script>
@@ -109,119 +96,660 @@
 const USERNAME = "NukemSquirell";
 const HOSTNAME = "blackwire";
 
-/* ========= HIDDEN GAME FILE (looks like python, runs as JS game via python3 command) ========= */
+/* ========= HIDDEN GAME FILE (looks like python, runs as JS game via python3 command) =========
+   IMPORTANT: this is a JS template string. It MUST end with a closing backtick (`) + semicolon.
+*/
 const HIDDEN_GAME_PY = `#!/usr/bin/env python3
-# /etc/.game.py  (hidden)
-# Nukem Squirrel: Terminal Ops 
-#
-# NOTE: In this CTF terminal (browser), Python isn't really executed.
-# The 'python3 /etc/.game.py' command triggers the embedded game runner.
-#
-# Objective:
-# - Get the 64-char token from the end screen
-# - Submit it to /stage3/submit
-#
-# Hint:
-# - Type 'python3 /etc/.game.py' to run.
-`;
+# NOTORIOUS NUKEM SQUIRREL — STAGE 3 TEXT OPS (Long Run)
+# Terminal-hidden CTF game that outputs a 64-hex token on completion.
+
+import sys, time, random, textwrap, hashlib
+
+# ---------------------------
+# Tuning
+# ---------------------------
+FAST_MODE = False
+
+TYPE_DELAY = 0.018     # base typing speed
+LINE_PAUSE = 0.25      # pause between “beats” / scene jumps
+
+def pause(t=LINE_PAUSE):
+    time.sleep(0.0 if FAST_MODE else t)
+
+def slowprint(text, delay=TYPE_DELAY):
+    d = 0.0 if FAST_MODE else delay
+    for ch in text:
+        sys.stdout.write(ch)
+        sys.stdout.flush()
+        time.sleep(d)
+    print()
+
+def wrap(text, w=72):
+    for line in textwrap.fill(text, width=w).splitlines():
+        slowprint(line)
+
+def rule(ch="─", w=72):
+    print(ch * w)
+
+def ask(prompt="> "):
+    return input(prompt).strip().lower()
+
+def die(title, msg):
+    rule()
+    slowprint(f"💀 GAME OVER — {title}")
+    wrap(msg)
+    rule()
+    slowprint("Play again? (y/n)")
+    if ask("> ").startswith("y"):
+        main()
+    sys.exit(0)
+
+# ---------------------------
+# Game State
+# ---------------------------
+state = {
+    "hp": 3,
+    "ammo": 6,
+    "inv": set(),
+    "shards": 0,  # need 3
+    "core_unlocked": False,
+    "location": "HQ",  # node id
+    "clown_alive": True,
+    "spike_hatch_armed": True,
+}
+
+# ---------------------------
+# Map / Rooms
+# ---------------------------
+MAP = {
+    "HQ": {
+        "name": "Arcade Backroom HQ",
+        "desc": (
+            "It’s 2:06 AM. Neon rain slides down the windows. Your arcade backroom HQ hums — "
+            "CRT glow, solder stink, and a vending machine that owes you money."
+        ),
+        "exits": {"street": "STREET", "vents": "VENTS", "armory": "ARMORY"},
+    },
+    "ARMORY": {
+        "name": "Locker Room: ‘Totally Legal’ Gear",
+        "desc": (
+            "A metal locker squeals open. Inside: a chrome acorn blaster, duct-taped grenades, "
+            "and a smell that screams ‘health and safety never visited’."
+        ),
+        "exits": {"back": "HQ"},
+        "on_enter": "armory_enter"
+    },
+    "STREET": {
+        "name": "Neon Street: Slime Alley",
+        "desc": (
+            "The city is a wet circuit board. Holo-ads wink. A drone buzzes past with a face that looks "
+            "a bit too interested in you."
+        ),
+        "exits": {"back": "HQ", "sewer": "SEWER", "tower": "TOWER_LOBBY"},
+    },
+    "VENTS": {
+        "name": "Service Vents",
+        "desc": (
+            "You pop a grille and crawl into the vents. It’s warm, dusty, and full of secrets. "
+            "Something laughs — like an IT department with a grudge."
+        ),
+        "exits": {"back": "HQ", "drop": "SPIKE_HATCH", "crawl": "CLOWN_NODE"},
+    },
+    "SPIKE_HATCH": {
+        "name": "Trap Hatch",
+        "desc": (
+            "A loose panel flexes under your weight. You hear a click — the kind of click that ends careers."
+        ),
+        "exits": {},
+        "on_enter": "spike_hatch"
+    },
+    "CLOWN_NODE": {
+        "name": "Maintenance Junction",
+        "desc": (
+            "The vent spits you into a maintenance junction. A server rack hums. A clown face flickers on a monitor: "
+            "‘I.T. Support’ — and it’s smiling like a tax audit."
+        ),
+        "exits": {"back": "VENTS", "fight": "CLOWN_FIGHT", "sneak": "SEWER"},
+    },
+    "CLOWN_FIGHT": {
+        "name": "I.T. Clown Encounter",
+        "desc": (
+            "The clown crawls out of the screen like corrupted firmware. It sniffs your boots. "
+            "You get the feeling it’s got a… foot fetish."
+        ),
+        "exits": {},
+        "on_enter": "clown_fight"
+    },
+    "SEWER": {
+        "name": "Sewer: The Ozone Gutter",
+        "desc": (
+            "Below the city, the sewer glows faint green. The walls are tagged with graffiti: "
+            "‘NEXUS WATCHES’. Yeah. Cute."
+        ),
+        "exits": {"street": "STREET", "stash": "SEWER_STASH", "substation": "SUBSTATION"},
+    },
+    "SEWER_STASH": {
+        "name": "Sewer Stash",
+        "desc": (
+            "A waterproof crate. Whoever hid this had taste — and paranoia. Mostly paranoia."
+        ),
+        "exits": {"back": "SEWER"},
+        "on_enter": "sewer_stash"
+    },
+    "SUBSTATION": {
+        "name": "Power Substation",
+        "desc": (
+            "Transformers crackle. A keypad panel blinks. Three slots glow: SHARD 1 / SHARD 2 / SHARD 3."
+        ),
+        "exits": {"back": "SEWER", "panel": "SUB_PANEL"},
+    },
+    "SUB_PANEL": {
+        "name": "Substation Panel",
+        "desc": (
+            "A panel demands three override shards. The city’s heartbeat is wired through here."
+        ),
+        "exits": {"back": "SUBSTATION"},
+        "on_enter": "sub_panel"
+    },
+    "TOWER_LOBBY": {
+        "name": "Blackwire Media Tower — Lobby",
+        "desc": (
+            "Marble floors. Security lasers. A receptionist bot that’s pretending not to see the blood on your sleeve."
+        ),
+        "exits": {"street": "STREET", "elevator": "TOWER_ELEV", "side": "TOWER_SIDE"},
+    },
+    "TOWER_SIDE": {
+        "name": "Side Office: HR’s Revenge",
+        "desc": (
+            "A dead quiet office. Posters: ‘Remember your password!’ as if that’s ever saved anyone."
+        ),
+        "exits": {"back": "TOWER_LOBBY"},
+        "on_enter": "tower_side"
+    },
+    "TOWER_ELEV": {
+        "name": "Service Lift",
+        "desc": (
+            "The lift needs power routing from the substation. Until then, it’s just a metal box full of disappointment."
+        ),
+        "exits": {"back": "TOWER_LOBBY", "up": "PENTHOUSE"},
+        "on_enter": "tower_elev"
+    },
+    "PENTHOUSE": {
+        "name": "Penthouse Core",
+        "desc": (
+            "Top floor. The city sprawls beneath you like a motherboard. In the centre: the NEXUS Core console, "
+            "pulsing like it’s alive. It probably is."
+        ),
+        "exits": {"back": "TOWER_ELEV", "console": "CORE_CONSOLE"},
+        "on_enter": "penthouse_enter"
+    },
+    "CORE_CONSOLE": {
+        "name": "NEXUS Core Console",
+        "desc": (
+            "The console waits. It wants a key. It wants your fear. It’s getting neither."
+        ),
+        "exits": {},
+        "on_enter": "core_console"
+    },
+}
+
+MINIMAP = r"""
+            [ARMORY]
+               |
+[VENTS] — [HQ] — [STREET] — [TOWER LOBBY] — [LIFT] — [PENTHOUSE]
+   |                      |
+[TRAP]                  [SEWER] — [SUBSTATION]
+   |
+[CLOWN]
+"""
+
+def show_status():
+    rule()
+    slowprint(f"📍 Location: {MAP[state['location']]['name']}")
+    slowprint(f"❤️  HP: {state['hp']}   🔫 Ammo: {state['ammo']}   🧩 Shards: {state['shards']}/3")
+    if state["inv"]:
+        slowprint("🎒 Inventory: " + ", ".join(sorted(state["inv"])))
+    else:
+        slowprint("🎒 Inventory: (empty)")
+    rule()
+
+def show_map():
+    print(MINIMAP)
+
+def give(item):
+    if item not in state["inv"]:
+        state["inv"].add(item)
+        slowprint(f"[+] Got: {item}")
+
+def hurt(n=1, reason=""):
+    state["hp"] -= n
+    if reason:
+        wrap(reason)
+    if state["hp"] <= 0:
+        die("Flatlined", "You hit the floor. The neon keeps buzzing. The city doesn’t even blink.")
+
+def spend_ammo(n=1):
+    if state["ammo"] >= n:
+        state["ammo"] -= n
+        return True
+    return False
+
+def armory_enter():
+    if "Chrome Acorn Blaster" not in state["inv"]:
+        give("Chrome Acorn Blaster")
+        state["ammo"] += 6
+        wrap("You cock the blaster. It purrs. You grin. The night just got personal.")
+        wrap("Ammo +6.")
+    else:
+        wrap("Nothing new. Still smells like bravado and bad decisions.")
+
+def spike_hatch():
+    die("Spike Pit",
+        "The hatch drops. Gravity does the rest. Spikes below sparkle like the world’s worst disco. "
+        "Your last thought: ‘I hate surprise inspections’.")
+
+def sewer_stash():
+    if "Med Kit" not in state["inv"]:
+        give("Med Kit")
+        state["ammo"] += 3
+        wrap("You crack the crate: a med kit and a few rounds. Someone out here wanted you to live. Weird.")
+        wrap("Ammo +3.")
+    else:
+        wrap("The crate is empty now. Like the promises of a dodgy VPN advert.")
+
+def tower_side():
+    if "Override Shard 1" not in state["inv"]:
+        give("Override Shard 1")
+        state["shards"] += 1
+        wrap("You yank a glowing shard out of a locked drawer. HR forms burst into flame out of sheer spite.")
+    else:
+        wrap("Just paperwork and regret.")
+
+def tower_elev():
+    if not state["core_unlocked"]:
+        wrap("The lift keypad flashes: POWER ROUTE REQUIRED. Substation first.")
+    else:
+        wrap("Power rerouted. The lift is alive. So are your chances.")
+
+def sub_panel():
+    if state["shards"] < 3:
+        wrap("Panel message: INSERT ALL 3 OVERRIDE SHARDS.")
+        wrap("You’re missing some. Go hunting.")
+        return
+
+    if not state["core_unlocked"]:
+        wrap("You slot the three shards. The substation sings. Somewhere above, the tower lift unlocks.")
+        state["core_unlocked"] = True
+    else:
+        wrap("Already powered. The city’s pulse is yours to command.")
+
+def penthouse_enter():
+    if not state["core_unlocked"]:
+        wrap("You can’t reach the penthouse properly until the lift is powered. The tower laughs at you.")
+    else:
+        wrap("The doors open with a rich-kid hiss. You step into the penthouse like you own the skyline.")
+
+def clown_fight():
+    if not state["clown_alive"]:
+        wrap("The monitors are dark. The clown is gone. Good riddance.")
+        state["location"] = "CLOWN_NODE"
+        return
+
+    wrap("The I.T clown lunges, grabbing your boots. Its teeth are… not normal.")
+    slowprint("Options: shoot / kick / run")
+    c = ask("> ")
+
+    if c == "kick":
+        die("Foot Feast",
+            "You kick. It bites. You scream. It eats your feet like they’re chicken wings. "
+            "Somewhere, a helpdesk ticket closes itself: RESOLVED.")
+    elif c == "run":
+        hurt(1, "You scramble away, losing a chunk of dignity and 1 HP. The clown honks behind you.")
+        state["location"] = "CLOWN_NODE"
+    elif c == "shoot":
+        if "Chrome Acorn Blaster" not in state["inv"]:
+            die("Unarmed",
+                "You reach for a weapon you don’t have. The clown smiles wider. This is why you loot first.")
+        if not spend_ammo(1):
+            die("Click",
+                "Empty chamber. The clown hears the click and laughs like a dial-up modem from hell.")
+        wrap("One shot. The clown’s grin stutters, pixelates, and collapses into static snow.")
+        state["clown_alive"] = False
+        wrap("You’re not a hero. You’re a solution.")
+        state["location"] = "CLOWN_NODE"
+    else:
+        wrap("You hesitate. The clown doesn’t.")
+        hurt(2, "Pain blooms. 2 HP gone.")
+        state["location"] = "CLOWN_NODE"
+
+def core_console():
+    if not state["core_unlocked"]:
+        wrap("Console: ACCESS DENIED. POWER ROUTE REQUIRED.")
+        state["location"] = "PENTHOUSE"
+        return
+
+    if "NEXUS Key" not in state["inv"]:
+        wrap("The console wants a key — not the metaphorical kind, the actual kind.")
+        wrap("You need to assemble it: find Override Shard 2 and 3, then slot all 3 at the substation.")
+        state["location"] = "PENTHOUSE"
+        return
+
+    wrap("You slot the NEXUS Key. The city hushes. Even the rain seems to listen.")
+    pause(0.6)
+    rule()
+    slowprint("MISSION: PURGE THE SIGNAL")
+    slowprint("Options: purge / spoof / overload")
+    rule()
+    choice = ask("> ")
+
+    if choice not in ("purge", "spoof", "overload", "1", "2", "3"):
+        wrap("The console doesn’t understand your mumbling. Try again.")
+        state["location"] = "CORE_CONSOLE"
+        return
+
+    if choice in ("spoof", "2"):
+        wrap("You spoof the signal. The core smiles back — it likes games. But it’s not dead.")
+        wrap("That’s not a win. That’s a delay.")
+        state["location"] = "CORE_CONSOLE"
+        return
+
+    if choice in ("overload", "3"):
+        wrap("You overload the buffers. Sparks spit. The core re-routes. Still breathing.")
+        wrap("Big noise. No kill.")
+        state["location"] = "CORE_CONSOLE"
+        return
+
+    wrap("You hit PURGE.")
+    pause(0.4)
+    wrap("The NEXUS Core screams in static. The skyline flickers. Then — silence.")
+    pause(0.4)
+    slowprint("✅ STAGE 3 COMPLETE.")
+    rule()
+
+    salt = f"{random.random()}|{time.time()}|{state['hp']}|{state['ammo']}|{len(state['inv'])}".encode()
+    token = hashlib.sha256(salt).hexdigest()
+    slowprint("CTF TOKEN (submit to /stage3/submit):")
+    slowprint(token)
+    rule()
+    slowprint("You light a victory cigar. It tastes like justice and bad life choices.")
+    sys.exit(0)
+
+def street_encounter():
+    if "Override Shard 2" in state["inv"]:
+        return
+    if random.random() < 0.55:
+        wrap("A surveillance drone drops low. Its lens dilates. It’s scanning for you.")
+        slowprint("Options: shoot / run / taunt")
+        c = ask("> ")
+        if c == "shoot":
+            if "Chrome Acorn Blaster" not in state["inv"]:
+                wrap("You pat your pockets. No blaster. The drone records your shame in 4K.")
+                hurt(1, "A shock dart hits you. 1 HP down.")
+                return
+            if not spend_ammo(1):
+                hurt(1, "Click. Empty. The drone zaps you. 1 HP down.")
+                return
+            wrap("You blast the drone. It bursts like a cheap firework.")
+            give("Override Shard 2")
+            state["shards"] += 1
+            wrap("Something clatters onto the pavement: Override Shard 2.")
+        elif c == "taunt":
+            wrap("You taunt the drone. It doesn’t laugh. It does, however, tase you.")
+            hurt(1, "1 HP down. The drone flies off, offended by your charisma.")
+        else:
+            wrap("You duck into the shadows. The drone loses you — barely.")
+
+def sewer_encounter():
+    if "Override Shard 3" in state["inv"]:
+        return
+    if random.random() < 0.50:
+        wrap("The sewer bubbles. Something rises — a slime mutant made of old data and bad decisions.")
+        slowprint("Options: shoot / bait / flee")
+        c = ask("> ")
+        if c == "shoot":
+            if "Chrome Acorn Blaster" not in state["inv"] or not spend_ammo(2):
+                hurt(2, "You fumble. It slaps you with a wet *thwack*. 2 HP down.")
+                return
+            wrap("Two shots. The mutant explodes into harmless goo and regret.")
+            give("Override Shard 3")
+            state["shards"] += 1
+            wrap("In the sludge: Override Shard 3.")
+        elif c == "bait":
+            if "Med Kit" in state["inv"]:
+                wrap("You toss a decoy pack. It chews on it like it’s gourmet. You grab what it dropped.")
+                give("Override Shard 3")
+                state["shards"] += 1
+            else:
+                hurt(1, "No decoy. It nicks you. 1 HP down.")
+        else:
+            wrap("You back off slowly. It follows for a bit, then sinks away.")
+
+def maybe_assemble_key():
+    if state["shards"] >= 3 and "NEXUS Key" not in state["inv"]:
+        wrap("Your shards vibrate in sync. They want to become something else.")
+        slowprint("Assemble NEXUS Key now? (y/n)")
+        if ask("> ").startswith("y"):
+            give("NEXUS Key")
+            wrap("The shards click together into a single key. It feels heavier than it should. Like responsibility.")
+            wrap("Now: go to the SUBSTATION panel to route power, then reach the penthouse core.")
+
+def enter_node(node_id):
+    state["location"] = node_id
+    node = MAP[node_id]
+
+    if node_id == "STREET":
+        street_encounter()
+    if node_id == "SEWER":
+        sewer_encounter()
+
+    handler = node.get("on_enter")
+    if handler:
+        globals()[handler]()
+
+    if node_id in ("STREET", "SEWER", "TOWER_LOBBY", "HQ", "SUBSTATION"):
+        maybe_assemble_key()
+
+def show_room():
+    node = MAP[state["location"]]
+    rule("=")
+    slowprint(node["name"])
+    rule("=")
+    wrap(node["desc"])
+    rule()
+
+def help_text():
+    print("""
+Commands:
+  go <exit>   Move via an exit (e.g., go street)
+  exits       Show available exits
+  map         Show minimap
+  stats       Show health/ammo/inventory
+  inv         Show inventory
+  use <item>  Use an item (basic)
+  quit        Exit
+
+Tip: Loot ARMORY early. VENTS has two ways to die.
+""".strip())
+
+def use_item(name):
+    name = name.lower()
+    if name in ("med", "medkit", "med kit"):
+        if "Med Kit" in state["inv"]:
+            state["inv"].remove("Med Kit")
+            state["hp"] = min(3, state["hp"] + 2)
+            wrap("You patch up. You smell like antiseptic and arrogance. +2 HP (max 3).")
+        else:
+            wrap("You don’t have a med kit.")
+    else:
+        wrap("Nothing happens.")
+
+def main():
+    state.update({
+        "hp": 3, "ammo": 6, "inv": set(),
+        "shards": 0, "core_unlocked": False,
+        "location": "HQ", "clown_alive": True, "spike_hatch_armed": True
+    })
+
+    rule()
+    slowprint("NOTORIOUS NUKEM SQUIRREL — STAGE 3")
+    wrap("One night. One city. One smug squirrel with a blaster and a bad attitude.")
+    rule()
+    slowprint("Type 'help' if you want directions. Or don’t. You look confident.")
+    pause(0.4)
+
+    enter_node("HQ")
+
+    while True:
+        show_room()
+
+        node = MAP[state["location"]]
+        exits = node.get("exits", {})
+        if exits:
+            slowprint("Exits: " + ", ".join(exits.keys()))
+        else:
+            wrap("There’s nowhere to go from here.")
+
+        cmd = ask("> ")
+        if not cmd:
+            continue
+        if cmd in ("help", "?"):
+            help_text()
+            continue
+        if cmd == "map":
+            show_map()
+            continue
+        if cmd in ("stats", "status"):
+            show_status()
+            continue
+        if cmd in ("inv", "inventory", "i"):
+            show_status()
+            continue
+        if cmd == "exits":
+            slowprint("Available exits: " + ", ".join(exits.keys()))
+            continue
+        if cmd.startswith("use "):
+            use_item(cmd[4:].strip())
+            continue
+        if cmd == "quit":
+            slowprint("You vanish into the neon. Cowardice is a valid lifestyle choice.")
+            break
+        if cmd.startswith("go "):
+            dest = cmd[3:].strip()
+            if dest in exits:
+                next_node = exits[dest]
+                if state["location"] == "TOWER_ELEV" and dest == "up" and not state["core_unlocked"]:
+                    wrap("Lift refuses. Power route required. Substation first.")
+                    continue
+                enter_node(next_node)
+                continue
+
+        if cmd in exits:
+            enter_node(exits[cmd])
+            continue
+
+        if state["location"] == "SUBSTATION" and cmd in ("panel", "go panel"):
+            enter_node("SUB_PANEL")
+            continue
+        if state["location"] == "PENTHOUSE" and cmd in ("console", "go console"):
+            enter_node("CORE_CONSOLE")
+            continue
+
+        wrap("Command not recognised. Try: go <exit>, exits, map, stats, inv, use <item>.")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\\n[ Interrupted ]")
+`; // <-- DO NOT DELETE: closes the JS template string safely
 
 /* Fake filesystem structure */
 const FS_ROOT = {
-    type: "dir",
-    children: {
-        "home": {
-            type: "dir",
-            children: {
-                "notoruss": {
-                    type: "dir",
-                    children: {
-                        "readme.txt": {
-                            type: "file",
-                            content:
+  type: "dir",
+  children: {
+    "home": {
+      type: "dir",
+      children: {
+        "notoruss": {
+          type: "dir",
+          children: {
+            "readme.txt": {
+              type: "file",
+              content:
 `Welcome, ${USERNAME}.
 
 This is a simulated Linux terminal for your CTF.
 Explore the filesystem with 'ls' and 'cd'.
 
-Hint: real hackers dig around /opt and /var...
+Hint: real hackers dig around /etc (hidden files), /opt and /var...
 `
-                        },
-                        "notes.txt": {
-                            type: "file",
-                            content:
+            },
+            "notes.txt": {
+              type: "file",
+              content:
 `Things to do:
 - Build Notorious Nukem Game Boy cart
 - Hide flags where no one looks
 - Profit`
-                        }
-                    }
-                }
             }
-        },
-        "etc": {
-            type: "dir",
-            children: {
-                "issue": {
-                    type: "file",
-                    content: "Notorious OS 1.0 (Blackwire Build)\n"
-                },
-                "motd": {
-                    type: "file",
-                    content:
-`Welcome to Blackwire Node-01
-Authorised squirrels only.`
-                },
-                ".game.py": {   // <- hidden: only visible in ls -a / ls -al
-                    type: "file",
-                    content: HIDDEN_GAME_PY
-                }
-            }
-        },
-        "var": {
-            type: "dir",
-            children: {
-                "log": {
-                    type: "dir",
-                    children: {
-                        "auth.log": {
-                            type: "file",
-                            content:
-`Dec  6 13:37 blackwire login[1337]: Accepted password for ${USERNAME}`
-                        }
-                    }
-                }
-            }
-        },
-        "bin": {
-            type: "dir",
-            children: {
-                "ls": { type: "file", content: "ELF 64-bit LSB executable" },
-                "cat": { type: "file", content: "ELF 64-bit LSB executable" }
-            }
-        },
-        "opt": {
-            type: "dir",
-            children: {
-                "ctf": {
-                    type: "dir",
-                    children: {
-                        "flag.txt": {
-                            type: "file",
-                            content: "FLAG{Not1nh3re}"
-                        },
-                        "hint.txt": {
-                            type: "file",
-                            content: "You’re closer than you think. Did you cat the right file?"
-                        }
-                    }
-                }
-            }
+          }
         }
+      }
+    },
+    "etc": {
+      type: "dir",
+      children: {
+        "issue": { type: "file", content: "Notorious OS 1.0 (Blackwire Build)\n" },
+        "motd": {
+          type: "file",
+          content: `Welcome to Blackwire Node-01
+Authorised squirrels only.`
+        },
+        ".game.py": {            // hidden: only visible in ls -a / ls -al
+          type: "file",
+          content: HIDDEN_GAME_PY
+        }
+      }
+    },
+    "var": {
+      type: "dir",
+      children: {
+        "log": {
+          type: "dir",
+          children: {
+            "auth.log": {
+              type: "file",
+              content: `Dec  6 13:37 blackwire login[1337]: Accepted password for ${USERNAME}`
+            }
+          }
+        }
+      }
+    },
+    "bin": {
+      type: "dir",
+      children: {
+        "ls":   { type: "file", content: "ELF 64-bit LSB executable" },
+        "cat":  { type: "file", content: "ELF 64-bit LSB executable" },
+        "nano": { type: "file", content: "ELF 64-bit LSB executable" }
+      }
+    },
+    "opt": {
+      type: "dir",
+      children: {
+        "ctf": {
+          type: "dir",
+          children: {
+            "flag.txt": { type: "file", content: "FLAG{Not1nh3re}" },
+            "hint.txt": { type: "file", content: "Try /etc with ls -a. Then run: python3 /etc/.game.py" }
+          }
+        }
+      }
     }
+  }
 };
 
 /* ========= STATE ========= */
-let cwd = ["home", "notoruss"];  // current working directory as path segments (relative to root)
+let cwd = ["home", "notoruss"];
 const history = [];
 let historyIndex = -1;
 
@@ -230,9 +758,9 @@ let nanoActive = false;
 let nanoFilePath = null;
 let nanoNode = null;
 
-/* ========= GAME STATE (Stage 3 text game) ========= */
+/* Game state (browser-run) */
 let gameActive = false;
-let game = null; // { state, hp, inv, token, ... }
+let game = null;
 
 /* ========= DOM ========= */
 const termEl = document.getElementById("terminal");
@@ -244,99 +772,57 @@ const nanoEditor = document.getElementById("nanoEditor");
 const nanoStatus = document.getElementById("nanoStatus");
 
 /* ========= HELPERS ========= */
-
 function print(text = "") {
-    termEl.textContent += text + "\n";
-    termEl.scrollTop = termEl.scrollHeight;
+  termEl.textContent += text + "\n";
+  termEl.scrollTop = termEl.scrollHeight;
 }
-
-function getPathString(pathArr) {
-    if (!pathArr.length) return "/";
-    return "/" + pathArr.join("/");
-}
-
-function updatePrompt() {
-    const pathStr = getPathString(cwd);
-    if (gameActive) {
-        promptEl.textContent = `[NUKEM]@${HOSTNAME}:${pathStr}$ `;
-    } else {
-        promptEl.textContent = `${USERNAME}@${HOSTNAME}:${pathStr}$ `;
-    }
-}
+function getPathString(pathArr) { return pathArr.length ? "/" + pathArr.join("/") : "/"; }
+function updatePrompt() { promptEl.textContent = `${USERNAME}@${HOSTNAME}:${getPathString(cwd)}$ `; }
 
 function resolvePath(pathStr) {
-    if (!pathStr || pathStr === ".") return [...cwd];
-
-    let parts = pathStr.split("/").filter(Boolean);
-    let result;
-
-    if (pathStr.startsWith("/")) {
-        result = [];
-    } else {
-        result = [...cwd];
-    }
-
-    for (const part of parts) {
-        if (part === ".") continue;
-        if (part === "..") {
-            if (result.length > 0) result.pop();
-        } else {
-            result.push(part);
-        }
-    }
-    return result;
+  if (!pathStr || pathStr === ".") return [...cwd];
+  const parts = pathStr.split("/").filter(Boolean);
+  const result = pathStr.startsWith("/") ? [] : [...cwd];
+  for (const part of parts) {
+    if (part === ".") continue;
+    if (part === "..") { if (result.length) result.pop(); continue; }
+    result.push(part);
+  }
+  return result;
 }
 
 function getNode(pathArr) {
-    let node = FS_ROOT;
-    for (const segment of pathArr) {
-        if (!node.children || !node.children[segment]) {
-            return null;
-        }
-        node = node.children[segment];
-    }
-    return node;
+  let node = FS_ROOT;
+  for (const segment of pathArr) {
+    if (!node.children || !node.children[segment]) return null;
+    node = node.children[segment];
+  }
+  return node;
 }
+function ensureDir(node) { return node && node.type === "dir"; }
 
-function ensureDir(node) {
-    return node && node.type === "dir";
-}
-
-/* Long listing formatter for ls -l/-al */
 function formatLongEntry(name, nodeOrType) {
-    const isDir =
-        nodeOrType === "dir" ||
-        (nodeOrType && nodeOrType.type === "dir");
-    const typeChar = isDir ? "d" : "-";
-
-    const perms = typeChar + "rwxr-xr-x";
-    const links = "1";
-    const owner = USERNAME;
-    const group = USERNAME;
-
-    let size = 0;
-    if (nodeOrType && nodeOrType.type === "file") {
-        size = (nodeOrType.content || "").length;
-    } else {
-        size = 4096;
-    }
-
-    const date = "Dec  6 13:37"; // fake static timestamp
-
-    return `${perms} ${links} ${owner} ${group} ${String(size).padStart(5, " ")} ${date} ${name}`;
+  const isDir = nodeOrType === "dir" || (nodeOrType && nodeOrType.type === "dir");
+  const typeChar = isDir ? "d" : "-";
+  const perms = typeChar + "rwxr-xr-x";
+  const links = "1";
+  const owner = USERNAME;
+  const group = USERNAME;
+  const size = (nodeOrType && nodeOrType.type === "file") ? (nodeOrType.content || "").length : 4096;
+  const date = "Dec  6 13:37";
+  return `${perms} ${links} ${owner} ${group} ${String(size).padStart(5, " ")} ${date} ${name}`;
 }
 
 function randHex64() {
-    const hex = "0123456789abcdef";
-    let out = "";
-    for (let i = 0; i < 64; i++) out += hex[Math.floor(Math.random() * 16)];
-    return out;
+  const hex = "0123456789abcdef";
+  let out = "";
+  for (let i = 0; i < 64; i++) out += hex[Math.floor(Math.random() * 16)];
+  return out;
 }
 
-/* ========= COMMAND IMPLEMENTATIONS ========= */
-
+/* ========= COMMANDS ========= */
 function cmd_help() {
-    print(
+  print(
 `Available commands:
   help          Show this help
   ls [opts]     List directory contents (-a, -l, -al)
@@ -353,608 +839,511 @@ function cmd_help() {
   nano <file>   Edit file
   python3 <f>   Run a python file (CTF shim)
   clear         Clear the screen`
-    );
+  );
 }
 
-function cmd_pwd() {
-    print(getPathString(cwd));
-}
+function cmd_pwd() { print(getPathString(cwd)); }
 
 function cmd_ls(args) {
-    let showAll = false;  // -a
-    let longFmt = false;  // -l
-    const paths = [];
+  let showAll = false;
+  let longFmt = false;
+  const paths = [];
 
-    for (const a of args) {
-        if (a.startsWith("-")) {
-            if (a.includes("a")) showAll = true;
-            if (a.includes("l")) longFmt = true;
-        } else {
-            paths.push(a);
-        }
-    }
-
-    const targetPath = paths[0] ? resolvePath(paths[0]) : cwd;
-    const node = getNode(targetPath);
-
-    if (!node) {
-        const label = paths[0] || "";
-        print(`ls: cannot access '${label}': No such file or directory`);
-        return;
-    }
-
-    if (node.type === "file") {
-        const name = paths[0] || targetPath[targetPath.length - 1];
-        if (longFmt) {
-            print(formatLongEntry(name, node));
-        } else {
-            print(name);
-        }
-        return;
-    }
-
-    const entries = [];
-
-    if (showAll) {
-        entries.push({ name: ".", special: "dot" });
-        if (targetPath.length > 0) {
-            entries.push({ name: "..", special: "dotdot" });
-        }
-    }
-
-    const names = Object.keys(node.children).sort();
-    for (const name of names) {
-        if (!showAll && name.startsWith(".")) continue;
-        entries.push({ name, node: node.children[name] });
-    }
-
-    if (longFmt) {
-        for (const e of entries) {
-            if (e.special === "dot") {
-                print(formatLongEntry(".", "dir"));
-            } else if (e.special === "dotdot") {
-                print(formatLongEntry("..", "dir"));
-            } else {
-                print(formatLongEntry(e.name, e.node));
-            }
-        }
+  for (const a of args) {
+    if (a.startsWith("-")) {
+      if (a.includes("a")) showAll = true;
+      if (a.includes("l")) longFmt = true;
     } else {
-        print(entries.map(e => e.name).join("  "));
+      paths.push(a);
     }
+  }
+
+  const targetPath = paths[0] ? resolvePath(paths[0]) : cwd;
+  const node = getNode(targetPath);
+
+  if (!node) {
+    const label = paths[0] || "";
+    print(`ls: cannot access '${label}': No such file or directory`);
+    return;
+  }
+
+  if (node.type === "file") {
+    const name = paths[0] || targetPath[targetPath.length - 1];
+    print(longFmt ? formatLongEntry(name, node) : name);
+    return;
+  }
+
+  const entries = [];
+  if (showAll) {
+    entries.push({ name: ".", special: "dot" });
+    if (targetPath.length > 0) entries.push({ name: "..", special: "dotdot" });
+  }
+
+  const names = Object.keys(node.children).sort();
+  for (const name of names) {
+    if (!showAll && name.startsWith(".")) continue;
+    entries.push({ name, node: node.children[name] });
+  }
+
+  if (longFmt) {
+    for (const e of entries) {
+      if (e.special === "dot") print(formatLongEntry(".", "dir"));
+      else if (e.special === "dotdot") print(formatLongEntry("..", "dir"));
+      else print(formatLongEntry(e.name, e.node));
+    }
+  } else {
+    print(entries.map(e => e.name).join("  "));
+  }
 }
 
 function cmd_cd(args) {
-    const dest = args[0] || `/home/${USERNAME}`;
-    const targetPath = resolvePath(dest);
-    const node = getNode(targetPath);
-    if (!node || node.type !== "dir") {
-        print(`bash: cd: ${dest}: No such file or directory`);
-        return;
-    }
-    cwd = targetPath;
+  const dest = args[0] || `/home/${USERNAME}`;
+  const targetPath = resolvePath(dest);
+  const node = getNode(targetPath);
+  if (!node || node.type !== "dir") {
+    print(`bash: cd: ${dest}: No such file or directory`);
+    return;
+  }
+  cwd = targetPath;
 }
 
 function cmd_cat(args) {
-    if (!args[0]) {
-        print("cat: missing file operand");
-        return;
-    }
-    const targetPath = resolvePath(args[0]);
-    const node = getNode(targetPath);
-    if (!node) {
-        print(`cat: ${args[0]}: No such file or directory`);
-        return;
-    }
-    if (node.type !== "file") {
-        print(`cat: ${args[0]}: Is a directory`);
-        return;
-    }
-    print(node.content);
+  if (!args[0]) { print("cat: missing file operand"); return; }
+  const targetPath = resolvePath(args[0]);
+  const node = getNode(targetPath);
+  if (!node) { print(`cat: ${args[0]}: No such file or directory`); return; }
+  if (node.type !== "file") { print(`cat: ${args[0]}: Is a directory`); return; }
+  print(node.content);
 }
 
-function cmd_echo(args) {
-    print(args.join(" "));
-}
-
-function cmd_whoami() {
-    print(USERNAME);
-}
-
+function cmd_echo(args) { print(args.join(" ")); }
+function cmd_whoami() { print(USERNAME); }
 function cmd_uname(args) {
-    if (args.length && args[0] === "-a") {
-        print(`NotoriousOS ${HOSTNAME} 1.0 #1337 SMP x86_64 GNU/Linux`);
-    } else {
-        print("NotoriousOS");
-    }
+  if (args.length && args[0] === "-a") print(`NotoriousOS ${HOSTNAME} 1.0 #1337 SMP x86_64 GNU/Linux`);
+  else print("NotoriousOS");
 }
-
-function cmd_clear() {
-    termEl.textContent = "";
-}
+function cmd_clear() { termEl.textContent = ""; }
 
 function cmd_mkdir(args) {
-    if (!args[0]) {
-        print("mkdir: missing operand");
-        return;
-    }
-    const name = args[0];
-    const parent = getNode(cwd);
-    if (!ensureDir(parent)) return;
-    if (parent.children[name]) {
-        print(`mkdir: cannot create directory '${name}': File exists`);
-        return;
-    }
-    parent.children[name] = { type: "dir", children: {} };
+  if (!args[0]) { print("mkdir: missing operand"); return; }
+  const name = args[0];
+  const parent = getNode(cwd);
+  if (!ensureDir(parent)) return;
+  if (parent.children[name]) { print(`mkdir: cannot create directory '${name}': File exists`); return; }
+  parent.children[name] = { type: "dir", children: {} };
 }
 
 function cmd_touch(args) {
-    if (!args[0]) {
-        print("touch: missing file operand");
-        return;
-    }
-    const name = args[0];
-    const parent = getNode(cwd);
-    if (!ensureDir(parent)) return;
-    if (!parent.children[name]) {
-        parent.children[name] = { type: "file", content: "" };
-    }
+  if (!args[0]) { print("touch: missing file operand"); return; }
+  const name = args[0];
+  const parent = getNode(cwd);
+  if (!ensureDir(parent)) return;
+  if (!parent.children[name]) parent.children[name] = { type: "file", content: "" };
 }
 
 function cmd_rm(args) {
-    if (!args[0]) {
-        print("rm: missing operand");
-        return;
-    }
-    const name = args[0];
-    const parent = getNode(cwd);
-    if (!ensureDir(parent)) return;
-    const node = parent.children[name];
-    if (!node) {
-        print(`rm: cannot remove '${name}': No such file`);
-        return;
-    }
-    if (node.type === "dir") {
-        print(`rm: cannot remove '${name}': Is a directory`);
-        return;
-    }
-    delete parent.children[name];
+  if (!args[0]) { print("rm: missing operand"); return; }
+  const name = args[0];
+  const parent = getNode(cwd);
+  if (!ensureDir(parent)) return;
+  const node = parent.children[name];
+  if (!node) { print(`rm: cannot remove '${name}': No such file`); return; }
+  if (node.type === "dir") { print(`rm: cannot remove '${name}': Is a directory`); return; }
+  delete parent.children[name];
 }
 
 function cmd_rmdir(args) {
-    if (!args[0]) {
-        print("rmdir: missing operand");
-        return;
-    }
-    const name = args[0];
-    const parent = getNode(cwd);
-    if (!ensureDir(parent)) return;
-    const node = parent.children[name];
-    if (!node) {
-        print(`rmdir: failed to remove '${name}': No such file or directory`);
-        return;
-    }
-    if (node.type !== "dir") {
-        print(`rmdir: failed to remove '${name}': Not a directory`);
-        return;
-    }
-    if (Object.keys(node.children).length > 0) {
-        print(`rmdir: failed to remove '${name}': Directory not empty`);
-        return;
-    }
-    delete parent.children[name];
+  if (!args[0]) { print("rmdir: missing operand"); return; }
+  const name = args[0];
+  const parent = getNode(cwd);
+  if (!ensureDir(parent)) return;
+  const node = parent.children[name];
+  if (!node) { print(`rmdir: failed to remove '${name}': No such file or directory`); return; }
+  if (node.type !== "dir") { print(`rmdir: failed to remove '${name}': Not a directory`); return; }
+  if (Object.keys(node.children).length > 0) { print(`rmdir: failed to remove '${name}': Directory not empty`); return; }
+  delete parent.children[name];
 }
 
-/* ========= NANO IMPLEMENTATION ========= */
-
+/* ========= NANO ========= */
 function openNano(pathStr) {
-    nanoFilePath = resolvePath(pathStr);
-    nanoNode = getNode(nanoFilePath);
+  const nanoFilePath = resolvePath(pathStr);
+  let node = getNode(nanoFilePath);
+  const filename = pathStr.split("/").pop();
 
-    const filename = pathStr.split("/").pop();
-
-    if (!nanoNode) {
-        const parentPath = nanoFilePath.slice(0, -1);
-        const parent = getNode(parentPath);
-        if (parent && parent.type === "dir") {
-            parent.children[filename] = { type: "file", content: "" };
-            nanoNode = parent.children[filename];
-        } else {
-            print(`nano: cannot create '${pathStr}': No such directory`);
-            nanoFilePath = null;
-            nanoNode = null;
-            return;
-        }
+  if (!node) {
+    const parentPath = nanoFilePath.slice(0, -1);
+    const parent = getNode(parentPath);
+    if (parent && parent.type === "dir") {
+      parent.children[filename] = { type: "file", content: "" };
+      node = parent.children[filename];
+    } else {
+      print(`nano: cannot create '${pathStr}': No such directory`);
+      return;
     }
+  }
 
-    if (nanoNode.type !== "file") {
-        print(`nano: '${pathStr}' is not a file`);
-        nanoFilePath = null;
-        nanoNode = null;
-        return;
-    }
+  if (node.type !== "file") { print(`nano: '${pathStr}' is not a file`); return; }
 
-    nanoActive = true;
-    nanoEditor.innerText = nanoNode.content || "";
-    nanoStatus.innerText = `Editing ${filename}`;
-    nanoOverlay.style.display = "flex";
-    nanoEditor.focus();
+  nanoActive = true;
+  window.__nanoNode = node;
+  nanoEditor.innerText = node.content || "";
+  nanoStatus.innerText = `Editing ${filename}`;
+  nanoOverlay.style.display = "flex";
+  nanoEditor.focus();
 }
 
 function closeNano(save) {
-    if (save && nanoNode) {
-        nanoNode.content = nanoEditor.innerText;
-    }
-    nanoActive = false;
-    nanoOverlay.style.display = "none";
-    nanoFilePath = null;
-    nanoNode = null;
-    nanoEditor.innerText = "";
-    cmdEl.focus();
+  if (save && window.__nanoNode) window.__nanoNode.content = nanoEditor.innerText;
+  nanoActive = false;
+  nanoOverlay.style.display = "none";
+  window.__nanoNode = null;
+  nanoEditor.innerText = "";
+  cmdEl.focus();
 }
 
 document.addEventListener("keydown", (e) => {
-    if (!nanoActive) return;
-
-    if (e.ctrlKey && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        nanoStatus.innerText = "Saved";
-        if (nanoNode) nanoNode.content = nanoEditor.innerText;
-        return;
-    }
-
-    if (e.ctrlKey && e.key.toLowerCase() === "x") {
-        e.preventDefault();
-        closeNano(true);
-        return;
-    }
+  if (!nanoActive) return;
+  if (e.ctrlKey && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    nanoStatus.innerText = "Saved";
+    if (window.__nanoNode) window.__nanoNode.content = nanoEditor.innerText;
+  }
+  if (e.ctrlKey && e.key.toLowerCase() === "x") {
+    e.preventDefault();
+    closeNano(true);
+  }
 });
 
-/* ========= GAME (runs inside terminal) ========= */
+/* ========= GAME (browser-run) =========
+   We do NOT execute the python; we simulate a run and output a 64-hex token.
+   The python is still discoverable via cat /etc/.game.py
+*/
+function startStage3Game() {
+  gameActive = true;
+  game = { state: "intro", hp: 3, ammo: 6, inv: new Set(), shards: 0, powered: false, token: null };
 
-function startNukemGame() {
-    gameActive = true;
-    game = {
-        state: "intro",
-        hp: 3,
-        inv: new Set(),
-        token: null
-    };
-
-    print("");
-    print("==============================================");
-    print("   NUKEM SQUIRREL: TERMINAL OPS (STAGE 3)");
-    print("==============================================");
-    print("Type choices exactly. Type 'exit' to quit the game.");
-    print("");
-    print("It’s 02:06. Neon rain hits the window like static.");
-    print("Blackwire’s grid is infected. The city’s network is screaming.");
-    print("");
-    print("You jack into the backroom node. Three doors render on screen:");
-    print("  1) armory");
-    print("  2) vents");
-    print("  3) street");
-    print("");
-    print("Where do you go?");
-    updatePrompt();
+  print("");
+  print("==================================================");
+  print(" NOTORIOUS NUKEM SQUIRREL — STAGE 3 TEXT OPS");
+  print("==================================================");
+  print("Type options exactly. Type 'exit' to return to the terminal.");
+  print("");
+  print("Type 'map' at any time to view the minimap.");
+  print("");
+  print("You wake in ARCADE HQ. Three routes:");
+  print("  armory / vents / street");
+  print("");
+  updatePrompt();
 }
 
-function endGameWin() {
-    game.token = randHex64();
-    print("");
-    print(">>> MISSION COMPLETE.");
-    print("You ripped the parasite out of Blackwire’s spine.");
-    print("");
-    print("YOUR STAGE 3 TOKEN (64-hex):");
-    print(game.token);
-    print("");
-    print("Submit it to your server endpoint:");
-    print("  POST /stage3/submit  {\"token\":\"<token>\"}");
-    print("");
-    print("Type 'exit' to return to the terminal.");
+function printMap() {
+  print(
+`            [ARMORY]
+               |
+[VENTS] — [HQ] — [STREET] — [TOWER] — [LIFT] — [PENTHOUSE]
+   |                      |
+[TRAP]                  [SEWER] — [SUBSTATION]
+   |
+[CLOWN]`
+  );
 }
 
-function endGameDeath(reason) {
-    print("");
-    print(">>> YOU DIED.");
-    print(reason);
-    print("Type 'exit' to return to the terminal.");
+function winGame() {
+  game.token = randHex64();
+  print("");
+  print("✅ STAGE 3 COMPLETE.");
+  print("");
+  print("CTF TOKEN (64-hex):");
+  print(game.token);
+  print("");
+  print("Submit it to your server endpoint:");
+  print('  POST /stage3/submit  {"token":"<token>"}');
+  print("");
+  print("Type 'exit' to return to the terminal.");
+}
+
+function dieGame(reason) {
+  print("");
+  print("💀 YOU DIED.");
+  print(reason);
+  print("Type 'exit' to return to the terminal.");
 }
 
 function handleGameInput(raw) {
-    const input = raw.trim().toLowerCase();
-    if (!input) return;
+  const input = raw.trim().toLowerCase();
+  if (!input) return;
 
-    if (input === "exit") {
-        print("[game] exiting…");
-        gameActive = false;
-        game = null;
-        return;
-    }
+  if (input === "exit") {
+    print("[game] exiting…");
+    gameActive = false;
+    game = null;
+    return;
+  }
 
-    // Simple state machine
-    switch (game.state) {
-        case "intro":
-            if (input === "1" || input === "armory") {
-                game.state = "armory";
-                print("");
-                print("Armory cache unlocked: you grab a CHROME ACORN BLASTER.");
-                game.inv.add("blaster");
-                print("Two routes appear:");
-                print("  1) hub");
-                print("  2) vents");
-                print("Choose:");
-            } else if (input === "2" || input === "vents") {
-                game.state = "vents";
-                print("");
-                print("You crawl into the vents. It’s hot. It’s tight. It smells like burnt silicon.");
-                print("Ahead:");
-                print("  1) drop");
-                print("  2) crawl");
-                print("Choose:");
-            } else if (input === "3" || input === "street") {
-                game.state = "street";
-                print("");
-                print("Street level. Neon filth. A billboard glitches: 'WELCOME HOME, SQUIRREL'.");
-                print("A drone swarm approaches.");
-                print("  1) fight");
-                print("  2) run");
-                print("Choose:");
-            } else {
-                print("Pick: armory / vents / street");
-            }
-            break;
+  if (input === "map") { printMap(); return; }
 
-        case "armory":
-            if (input === "1" || input === "hub") {
-                game.state = "hub";
-                print("");
-                print("You enter the NETWORK HUB. Three terminals pulse:");
-                print("  1) purge");
-                print("  2) spoof");
-                print("  3) overload");
-                print("Choose:");
-            } else if (input === "2" || input === "vents") {
-                game.state = "vents";
-                print("");
-                print("Vents again. The metal hums like it’s alive.");
-                print("Ahead:");
-                print("  1) drop");
-                print("  2) crawl");
-                print("Choose:");
-            } else {
-                print("Pick: hub / vents");
-            }
-            break;
+  // Simple flow that matches the embedded python narrative.
+  switch (game.state) {
+    case "intro":
+      if (input === "armory" || input === "1") {
+        game.state = "armory";
+        if (!game.inv.has("blaster")) {
+          game.inv.add("blaster");
+          game.ammo += 6;
+        }
+        print("");
+        print("ARMORY: You grab a Chrome Acorn Blaster. Ammo +6.");
+        print("Go: hq / vents");
+      } else if (input === "vents" || input === "2") {
+        game.state = "vents";
+        print("");
+        print("VENTS: Two choices:");
+        print("  drop  (feels wrong)");
+        print("  crawl (feels worse)");
+      } else if (input === "street" || input === "3") {
+        game.state = "street";
+        print("");
+        print("STREET: Neon slime alley. Go: sewer / tower / hq");
+      } else {
+        print("Choose: armory / vents / street");
+      }
+      break;
 
-        case "vents":
-            if (input === "1" || input === "drop") {
-                // Trap door / spikes death (one of your requested dead ends)
-                endGameDeath("A trap hatch snaps open. You drop into a spike pit. The system logs your last breath.");
-                game.state = "dead";
-            } else if (input === "2" || input === "crawl") {
-                game.state = "clown";
-                print("");
-                print("You crawl forward… and the vent opens into a maintenance bay.");
-                print("A grinning IT clown unfolds from the dark, chewing cables like spaghetti.");
-                print("It lunges for your feet.");
-                print("  1) shoot");
-                print("  2) kick");
-                print("Choose:");
-            } else {
-                print("Pick: drop / crawl");
-            }
-            break;
+    case "armory":
+      if (input === "hq") { game.state = "intro"; print(""); print("Back at HQ. Choose: armory / vents / street"); }
+      else if (input === "vents") { game.state = "vents"; print(""); print("VENTS: choose drop / crawl"); }
+      else print("Go: hq / vents");
+      break;
 
-        case "clown":
-            if (input === "1" || input === "shoot") {
-                if (game.inv.has("blaster")) {
-                    print("");
-                    print("You fire the Chrome Acorn Blaster.");
-                    print("The clown’s visor shatters into pixels. It collapses, screeching modem noises.");
-                    game.state = "hub";
-                    print("");
-                    print("A service door opens to the NETWORK HUB.");
-                    print("Terminals pulse:");
-                    print("  1) purge");
-                    print("  2) spoof");
-                    print("  3) overload");
-                    print("Choose:");
-                } else {
-                    // If they didn't get blaster, clown wins (dead end #2)
-                    endGameDeath("Click. Empty hands. The IT clown laughs and eats your feet like crunchy packets.");
-                    game.state = "dead";
-                }
-            } else if (input === "2" || input === "kick") {
-                endGameDeath("Bad move. The IT clown bites down. Your feet are gone. You bleed out in the dark.");
-                game.state = "dead";
-            } else {
-                print("Pick: shoot / kick");
-            }
-            break;
+    case "vents":
+      if (input === "drop") {
+        dieGame("A trap hatch drops you into spikes. Neon goes out.");
+        game.state = "dead";
+      } else if (input === "crawl") {
+        game.state = "clown";
+        print("");
+        print("CLOWN NODE: An I.T clown lunges for your feet.");
+        print("Choose: shoot / kick / run");
+      } else {
+        print("Choose: drop / crawl");
+      }
+      break;
 
-        case "street":
-            if (input === "1" || input === "fight") {
-                print("");
-                print("You fight through drones. Sparks rain. You take a hit.");
-                game.hp -= 1;
-                if (game.hp <= 0) {
-                    endGameDeath("A drone detonates at your chest. Neon goes black.");
-                    game.state = "dead";
-                } else {
-                    print(`HP remaining: ${game.hp}`);
-                    print("You find a service ladder up to the HUB.");
-                    game.state = "hub";
-                    print("");
-                    print("Terminals pulse:");
-                    print("  1) purge");
-                    print("  2) spoof");
-                    print("  3) overload");
-                    print("Choose:");
-                }
-            } else if (input === "2" || input === "run") {
-                print("");
-                print("You sprint, vaulting trash piles. A door slams behind you—HUB access.");
-                game.state = "hub";
-                print("");
-                print("Terminals pulse:");
-                print("  1) purge");
-                print("  2) spoof");
-                print("  3) overload");
-                print("Choose:");
-            } else {
-                print("Pick: fight / run");
-            }
-            break;
+    case "clown":
+      if (input === "kick") {
+        dieGame("Bad move. The I.T clown eats your feet like crunchy packets.");
+        game.state = "dead";
+      } else if (input === "run") {
+        game.hp -= 1;
+        print("");
+        print("You escape, but take a hit. HP -1.");
+        print("Go: sewer");
+        game.state = "street";
+      } else if (input === "shoot") {
+        if (!game.inv.has("blaster")) {
+          dieGame("Click. No blaster. The clown wins.");
+          game.state = "dead";
+        } else if (game.ammo <= 0) {
+          dieGame("Click. Out of ammo. The clown wins.");
+          game.state = "dead";
+        } else {
+          game.ammo -= 1;
+          print("");
+          print("You blast the clown into static. A service route opens.");
+          print("Go: sewer");
+          game.state = "street";
+        }
+      } else {
+        print("Choose: shoot / kick / run");
+      }
+      break;
 
-        case "hub":
-            if (input === "1" || input === "purge") {
-                // Win condition path
-                endGameWin();
-                game.state = "won";
-            } else if (input === "2" || input === "spoof") {
-                print("");
-                print("You spoof the node. It works… briefly.");
-                print("The parasite adapts. You need a real purge.");
-                print("Choose: purge / overload");
-            } else if (input === "3" || input === "overload") {
-                print("");
-                print("You overload the grid. Everything screams.");
-                print("You’re alive… but the infection survives.");
-                print("Choose: purge");
-            } else {
-                print("Pick: purge / spoof / overload");
-            }
-            break;
+    case "street":
+      if (input === "hq") { game.state = "intro"; print(""); print("Back at HQ. Choose: armory / vents / street"); }
+      else if (input === "sewer") { game.state = "sewer"; print(""); print("SEWER: find shards. Go: substation / tower / street"); }
+      else if (input === "tower") { game.state = "tower"; print(""); print("TOWER: lobby access. Go: lift / side / street"); }
+      else print("Go: sewer / tower / hq");
+      break;
 
-        case "won":
-        case "dead":
-            print("Type 'exit' to return to the terminal.");
-            break;
+    case "sewer":
+      if (input === "substation") {
+        if (game.shards < 3) {
+          print("");
+          print("SUBSTATION PANEL: needs 3 shards. Keep hunting.");
+        } else {
+          game.powered = true;
+          print("");
+          print("SUBSTATION: Power routed. Lift is now active.");
+        }
+      } else if (input === "tower") {
+        game.state = "tower";
+        print("");
+        print("TOWER: lobby access. Go: lift / side / street");
+      } else if (input === "street") {
+        game.state = "street";
+        print("");
+        print("STREET: Go: sewer / tower / hq");
+      } else if (input === "shard") {
+        // cheeky shortcut for testing
+        game.shards = Math.min(3, game.shards + 1);
+        print(`Shard acquired. (${game.shards}/3)`);
+      } else {
+        print("Go: substation / tower / street  (tip: type 'shard' to simulate finding one)");
+      }
+      break;
 
-        default:
-            print("Type 'exit' to return.");
-            break;
-    }
+    case "tower":
+      if (input === "side") {
+        if (game.shards < 3) {
+          game.shards += 1;
+          print("");
+          print(`SIDE OFFICE: you find an Override Shard. (${game.shards}/3)`);
+        } else {
+          print("");
+          print("SIDE OFFICE: nothing left but paperwork.");
+        }
+        print("Go: lift / street");
+      } else if (input === "lift") {
+        if (!game.powered) {
+          print("");
+          print("LIFT: no power route. Go to substation first.");
+        } else {
+          game.state = "penthouse";
+          print("");
+          print("PENTHOUSE: NEXUS CORE console is live. Choose: purge / spoof / overload");
+        }
+      } else if (input === "street") {
+        game.state = "street";
+        print("");
+        print("STREET: Go: sewer / tower / hq");
+      } else {
+        print("Go: lift / side / street");
+      }
+      break;
+
+    case "penthouse":
+      if (input === "purge") { winGame(); game.state = "won"; }
+      else if (input === "spoof") { print("Spoof works briefly. The infection survives. Choose: purge"); }
+      else if (input === "overload") { print("Everything screams. Infection survives. Choose: purge"); }
+      else print("Choose: purge / spoof / overload");
+      break;
+
+    case "won":
+    case "dead":
+      print("Type 'exit' to return to the terminal.");
+      break;
+
+    default:
+      print("Type 'exit' to return.");
+  }
 }
 
 /* ========= python3 shim ========= */
-
 function cmd_python3(args) {
-    if (!args[0]) {
-        print("python3: missing file operand");
-        return;
-    }
-    const targetPath = resolvePath(args[0]);
-    const node = getNode(targetPath);
+  if (!args[0]) { print("python3: missing file operand"); return; }
 
-    if (!node) {
-        print(`python3: can't open file '${args[0]}': [Errno 2] No such file or directory`);
-        return;
-    }
-    if (node.type !== "file") {
-        print(`python3: '${args[0]}' is not a file`);
-        return;
-    }
+  const targetPath = resolvePath(args[0]);
+  const node = getNode(targetPath);
 
-    const pathStr = "/" + targetPath.join("/");
-    if (pathStr === "/etc/.game.py") {
-        startNukemGame();
-        return;
-    }
+  if (!node) { print(`python3: can't open file '${args[0]}': [Errno 2] No such file or directory`); return; }
+  if (node.type !== "file") { print(`python3: '${args[0]}' is not a file`); return; }
 
-    print("python3: this terminal is simulated (browser). Only specific CTF scripts can run.");
+  const pathStr = "/" + targetPath.join("/");
+  if (pathStr === "/etc/.game.py") {
+    startStage3Game();
+    return;
+  }
+
+  print("python3: this terminal is simulated (browser). Only specific CTF scripts can run.");
 }
 
-/* ========= COMMAND DISPATCH ========= */
-
+/* ========= DISPATCH ========= */
 function runCommand(line) {
-    if (!line.trim()) return;
+  if (!line.trim()) return;
 
-    // If game is active, route everything into the game handler
-    if (gameActive) {
-        handleGameInput(line);
-        return;
-    }
+  // If game is active, route all input to the game
+  if (gameActive) {
+    handleGameInput(line);
+    return;
+  }
 
-    history.push(line);
-    historyIndex = history.length;
+  history.push(line);
+  historyIndex = history.length;
 
-    const parts = line.trim().split(/\s+/);
-    const cmd = parts[0];
-    const args = parts.slice(1);
+  const parts = line.trim().split(/\s+/);
+  const cmd = parts[0];
+  const args = parts.slice(1);
 
-    switch (cmd) {
-        case "help":      cmd_help(); break;
-        case "pwd":       cmd_pwd(); break;
-        case "ls":        cmd_ls(args); break;
-        case "cd":        cmd_cd(args); break;
-        case "cat":       cmd_cat(args); break;
-        case "echo":      cmd_echo(args); break;
-        case "whoami":    cmd_whoami(); break;
-        case "uname":     cmd_uname(args); break;
-        case "clear":     cmd_clear(); break;
-        case "mkdir":     cmd_mkdir(args); break;
-        case "touch":     cmd_touch(args); break;
-        case "rm":        cmd_rm(args); break;
-        case "rmdir":     cmd_rmdir(args); break;
-        case "nano":
-            if (!args[0]) {
-                print("nano: missing file operand");
-            } else {
-                openNano(args[0]);
-            }
-            break;
-        case "python3":
-            cmd_python3(args);
-            break;
-        case "":
-            break;
-        default:
-            print(`bash: ${cmd}: command not found`);
-    }
+  switch (cmd) {
+    case "help":   cmd_help(); break;
+    case "pwd":    cmd_pwd(); break;
+    case "ls":     cmd_ls(args); break;
+    case "cd":     cmd_cd(args); break;
+    case "cat":    cmd_cat(args); break;
+    case "echo":   cmd_echo(args); break;
+    case "whoami": cmd_whoami(); break;
+    case "uname":  cmd_uname(args); break;
+    case "clear":  cmd_clear(); break;
+    case "mkdir":  cmd_mkdir(args); break;
+    case "touch":  cmd_touch(args); break;
+    case "rm":     cmd_rm(args); break;
+    case "rmdir":  cmd_rmdir(args); break;
+    case "nano":
+      if (!args[0]) print("nano: missing file operand");
+      else openNano(args[0]);
+      break;
+    case "python3":
+      cmd_python3(args);
+      break;
+    default:
+      print(`bash: ${cmd}: command not found`);
+  }
 }
 
 /* ========= INPUT HANDLING ========= */
-
 cmdEl.addEventListener("keydown", (e) => {
-    if (nanoActive) return;
+  if (nanoActive) return;
 
-    if (e.key === "Enter") {
-        const input = cmdEl.value;
-        const currentPrompt = promptEl.textContent;
-        print(currentPrompt + input);
-        runCommand(input);
-        cmdEl.value = "";
-        updatePrompt();
-    } else if (e.key === "ArrowUp") {
-        if (history.length === 0) return;
-        if (historyIndex > 0) historyIndex--;
-        cmdEl.value = history[historyIndex] || "";
-        e.preventDefault();
-    } else if (e.key === "ArrowDown") {
-        if (history.length === 0) return;
-        if (historyIndex < history.length - 1) {
-            historyIndex++;
-            cmdEl.value = history[historyIndex];
-        } else {
-            historyIndex = history.length;
-            cmdEl.value = "";
-        }
-        e.preventDefault();
+  if (e.key === "Enter") {
+    const input = cmdEl.value;
+    const currentPrompt = promptEl.textContent;
+    print(currentPrompt + input);
+    runCommand(input);
+    cmdEl.value = "";
+    updatePrompt();
+  } else if (e.key === "ArrowUp") {
+    if (history.length === 0) return;
+    if (historyIndex > 0) historyIndex--;
+    cmdEl.value = history[historyIndex] || "";
+    e.preventDefault();
+  } else if (e.key === "ArrowDown") {
+    if (history.length === 0) return;
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      cmdEl.value = history[historyIndex];
+    } else {
+      historyIndex = history.length;
+      cmdEl.value = "";
     }
+    e.preventDefault();
+  }
 });
 
 /* ========= INIT ========= */
-
 function init() {
-    print(`NotoriousOS (Linux terminal)
+  print(`NotoriousOS (Linux terminal)
 Type 'help' for available commands.
 
-`);
-    updatePrompt();
-    cmdEl.focus();
-}
+Tip: try:
+  cd /etc
+  ls -a
+  cat .game.py
+  python3 /etc/.game.py
 
+`);
+  updatePrompt();
+  cmdEl.focus();
+}
 init();
 </script>
 </body>
