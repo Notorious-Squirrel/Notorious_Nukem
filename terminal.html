@@ -248,6 +248,12 @@ fs:FS_ROOT
 let nanoActive=false
 let nanoNode=null
 
+/* SSH login state */
+
+let sshPending=false
+let sshUser=""
+let sshHost=""
+
 /* ================= DOM ================= */
 
 const term=document.getElementById("terminal")
@@ -380,17 +386,13 @@ print("Connection refused")
 return
 }
 
-let r=REMOTE_HOSTS[host]
+sshPending=true
+sshUser=user
+sshHost=host
 
-currentHost={
-hostname:r.hostname,
-username:user,
-fs:r.fs
-}
+print(`Connecting to ${host}`)
+print(`${user}@${host}'s password:`)
 
-cwd=["home",user]
-
-print(`Connected to ${host}`)
 }
 
 /* ================= NANO ================= */
@@ -433,6 +435,37 @@ setTimeout(()=>cmd.focus(),0)
 
 function run(line){
 
+/* SSH password handler */
+
+if(sshPending){
+
+let hostData = REMOTE_HOSTS[sshHost]
+
+if(line === hostData.password){
+
+currentHost={
+hostname:hostData.hostname,
+username:sshUser,
+fs:hostData.fs
+}
+
+cwd=["home",sshUser]
+
+print("Login successful")
+
+}else{
+
+print("Permission denied")
+
+}
+
+sshPending=false
+updatePrompt()
+return
+}
+
+/* Normal command parser */
+
 let [c,...a]=line.split(" ")
 
 switch(c){
@@ -445,7 +478,7 @@ case "help":cmd_help();break
 case "clear":cmd_clear();break
 case "ssh":cmd_ssh(a);break
 case "nano":openNano(a[0]);break
-    
+
 case "exit":
 currentHost={
 hostname:HOSTNAME,
@@ -453,9 +486,12 @@ username:USERNAME,
 fs:FS_ROOT
 }
 cwd=["home","notoruss"]
+print("Disconnected")
+updatePrompt()
 break
 
-default:print("command not found")
+default:
+print("command not found")
 
 }
 
