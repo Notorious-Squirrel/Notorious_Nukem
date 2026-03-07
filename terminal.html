@@ -109,20 +109,6 @@
 const USERNAME = "NukemSquirell";
 const HOSTNAME = "blackwire";
 
-/* Fake filesystem structure */
-const FS_ROOT = {
-    type: "dir",
-    children: {
-        "home": {
-            type: "dir",
-            children: {
-                "notoruss": {
-                    type: "dir",
-                    children: {
-                        "readme.txt": {
-                            type: "file",
-                            content:
-
 /* ========= REMOTE HOSTS ========= */
 
 const REMOTE_HOSTS = {
@@ -163,6 +149,20 @@ Old storage moved to /opt/archive`
                         }
                     }
                 },
+    
+/* Fake filesystem structure */
+const FS_ROOT = {
+    type: "dir",
+    children: {
+        "home": {
+            type: "dir",
+            children: {
+                "notoruss": {
+                    type: "dir",
+                    children: {
+                        "readme.txt": {
+                            type: "file",
+                            content:
 
                 "var": {
                     type: "dir",
