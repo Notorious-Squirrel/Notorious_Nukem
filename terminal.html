@@ -444,6 +444,15 @@ case "help":cmd_help();break
 case "clear":cmd_clear();break
 case "ssh":cmd_ssh(a);break
 case "nano":openNano(a[0]);break
+    
+case "exit":
+currentHost={
+hostname:HOSTNAME,
+username:USERNAME,
+fs:FS_ROOT
+}
+cwd=["home","notoruss"]
+break
 
 default:print("command not found")
 
