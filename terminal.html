@@ -122,6 +122,68 @@ const FS_ROOT = {
                         "readme.txt": {
                             type: "file",
                             content:
+
+/* ========= REMOTE HOSTS ========= */
+
+const REMOTE_HOSTS = {
+    "192.168.1.23": {
+        hostname: "devserver",
+        username: "hacker",
+        fs: {
+            type: "dir",
+            children: {
+                "home": {
+                    type: "dir",
+                    children: {
+                        "hacker": {
+                            type: "dir",
+                            children: {
+                                "notes.txt": {
+                                    type: "file",
+                                    content:
+`Backup server credentials rotated.
+Old storage moved to /opt/archive`
+                                }
+                            }
+                        }
+                    }
+                },
+
+                "opt": {
+                    type: "dir",
+                    children: {
+                        "archive": {
+                            type: "dir",
+                            children: {
+                                "flag.txt": {
+                                    type: "file",
+                                    content: "FLAG{SSH-PIVOT-COMPLETE}"
+                                }
+                            }
+                        }
+                    }
+                },
+
+                "var": {
+                    type: "dir",
+                    children: {
+                        "log": {
+                            type: "dir",
+                            children: {
+                                "auth.log": {
+                                    type: "file",
+                                    content:
+`Jan 21 devserver sshd[221]: Accepted password for hacker`
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+                                
 `Welcome, ${USERNAME}.
 
 This is a simulated Linux terminal for your CTF.
