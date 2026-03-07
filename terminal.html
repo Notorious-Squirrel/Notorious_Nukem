@@ -6,67 +6,67 @@
 
 <style>
 html, body {
-    margin:0;
-    padding:0;
-    height:100%;
-    background:#000;
-    color:#00ff9c;
-    font-family:monospace;
+margin:0;
+padding:0;
+height:100%;
+background:#000;
+color:#00ff9c;
+font-family:monospace;
 }
 
 #wrapper{
-    display:flex;
-    flex-direction:column;
-    height:100vh;
-    padding:10px;
+display:flex;
+flex-direction:column;
+height:100vh;
+padding:10px;
 }
 
 #terminal{
-    flex:1;
-    overflow-y:auto;
-    white-space:pre-wrap;
+flex:1;
+overflow-y:auto;
+white-space:pre-wrap;
 }
 
 #input-line{
-    display:flex;
-    gap:5px;
-    border-top:1px solid #00ff9c;
-    padding-top:5px;
+display:flex;
+gap:5px;
+border-top:1px solid #00ff9c;
+padding-top:5px;
 }
 
 #cmdline{
-    flex:1;
-    background:transparent;
-    border:none;
-    outline:none;
-    color:#00ff9c;
-    font-family:inherit;
+flex:1;
+background:transparent;
+border:none;
+outline:none;
+color:#00ff9c;
+font-family:inherit;
 }
 
 #nanoOverlay{
-    position:fixed;
-    inset:0;
-    background:#000;
-    color:#00ff9c;
-    display:none;
-    flex-direction:column;
-    padding:10px;
+position:fixed;
+inset:0;
+background:#000;
+color:#00ff9c;
+display:none;
+flex-direction:column;
+padding:10px;
 }
 
 #nanoEditor{
-    flex:1;
-    white-space:pre-wrap;
-    outline:none;
+flex:1;
+white-space:pre-wrap;
+outline:none;
 }
 
 #nanoStatus{
-    background:#003322;
-    padding:3px;
+background:#003322;
+padding:3px;
 }
 
 #nanoHelp{
-    background:#002211;
-    padding:3px;
+background:#002211;
+padding:3px;
 }
 </style>
 </head>
@@ -237,14 +237,15 @@ content:"FLAG{NOTORIOUS-SQUIRREL-TERMINAL-01}"
 /* ================= STATE ================= */
 
 let cwd=["home","notoruss"]
-let history=[]
-let historyIndex=-1
 
 let currentHost={
 hostname:HOSTNAME,
 username:USERNAME,
 fs:FS_ROOT
 }
+
+let nanoActive=false
+let nanoNode=null
 
 /* ================= DOM ================= */
 
@@ -255,9 +256,6 @@ const prompt=document.getElementById("prompt")
 const nanoOverlay=document.getElementById("nanoOverlay")
 const nanoEditor=document.getElementById("nanoEditor")
 const nanoStatus=document.getElementById("nanoStatus")
-
-let nanoActive=false
-let nanoNode=null
 
 /* ================= HELPERS ================= */
 
@@ -276,6 +274,8 @@ prompt.textContent=`${currentHost.username}@${currentHost.hostname}:${getPath()}
 
 function resolve(path){
 
+if(!path) return [...cwd]
+
 if(path.startsWith("/")) return path.split("/").filter(Boolean)
 
 let p=[...cwd]
@@ -293,7 +293,7 @@ function getNode(path){
 let n=currentHost.fs
 
 for(let p of path){
-if(!n.children[p]) return null
+if(!n.children || !n.children[p]) return null
 n=n.children[p]
 }
 
@@ -305,12 +305,18 @@ return n
 function cmd_ls(){
 
 let n=getNode(cwd)
+
+if(!n || !n.children){
+print("")
+return
+}
+
 print(Object.keys(n.children).join("  "))
 }
 
 function cmd_cd(a){
 
-let p=resolve(a[0]||"home")
+let p=resolve(a[0]||"/home/notoruss")
 
 let n=getNode(p)
 
@@ -356,6 +362,11 @@ term.textContent=""
 /* ================= SSH ================= */
 
 function cmd_ssh(a){
+
+if(!a[0]){
+print("usage: ssh user@host")
+return
+}
 
 let [user,host]=a[0].split("@")
 
