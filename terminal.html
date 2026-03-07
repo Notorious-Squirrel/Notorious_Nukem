@@ -256,6 +256,8 @@ const prompt=document.getElementById("prompt")
 const nanoOverlay=document.getElementById("nanoOverlay")
 const nanoEditor=document.getElementById("nanoEditor")
 const nanoStatus=document.getElementById("nanoStatus")
+  
+window.onload = () => cmd.focus()
 
 /* ================= HELPERS ================= */
 
@@ -469,7 +471,7 @@ updatePrompt()
 
 })
 
-/* ================= INIT ================= */
+/* =================  ================= */
 
 function init(){
 
@@ -477,6 +479,8 @@ print("NotoriousOS Terminal")
 print("Type help")
 
 updatePrompt()
+
+cmd.focus()
 
 }
 
