@@ -112,43 +112,63 @@ const HOSTNAME = "blackwire";
 /* ========= REMOTE HOSTS ========= */
 
 const REMOTE_HOSTS = {
-    "192.168.1.23": {
-        hostname: "devserver",
-        username: "hacker",
-        fs: {
-            type: "dir",
-            children: {
-                "home": {
-                    type: "dir",
-                    children: {
-                        "hacker": {
-                            type: "dir",
-                            children: {
-                                "notes.txt": {
-                                    type: "file",
-                                    content:
-`Backup server credentials rotated.
-Old storage moved to /opt/archive`
-                                }
-                            }
-                        }
-                    }
-                },
+  "192.168.1.23": {
+    hostname: "devserver",
+    username: "hacker",
+    fs: {
+      type: "dir",
+      children: {
 
-                "opt": {
-                    type: "dir",
-                    children: {
-                        "archive": {
-                            type: "dir",
-                            children: {
-                                "flag.txt": {
-                                    type: "file",
-                                    content: "FLAG{SSH-PIVOT-COMPLETE}"
-                                }
-                            }
-                        }
-                    }
-                },
+        "home": {
+          type: "dir",
+          children: {
+            "hacker": {
+              type: "dir",
+              children: {
+                "notes.txt": {
+                  type: "file",
+                  content: `Backup server credentials rotated.
+Old storage moved to /opt/archive`
+                }
+              }
+            }
+          }
+        },
+
+        "opt": {
+          type: "dir",
+          children: {
+            "archive": {
+              type: "dir",
+              children: {
+                "flag.txt": {
+                  type: "file",
+                  content: "FLAG{SSH-PIVOT-COMPLETE}"
+                }
+              }
+            }
+          }
+        },
+
+        "var": {
+          type: "dir",
+          children: {
+            "log": {
+              type: "dir",
+              children: {
+                "auth.log": {
+                  type: "file",
+                  content: "Jan 21 devserver sshd[221]: Accepted password for hacker"
+                }
+              }
+            }
+          }
+        }
+
+      }
+    }
+  }
+};
     
 /* Fake filesystem structure */
 const FS_ROOT = {
