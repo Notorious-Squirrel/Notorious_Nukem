@@ -276,13 +276,15 @@ function resolve(path){
 
 if(!path) return [...cwd]
 
+if(typeof path !== "string") return [...cwd]
+
 if(path.startsWith("/")) return path.split("/").filter(Boolean)
 
 let p=[...cwd]
 
 path.split("/").forEach(x=>{
-if(x==="..")p.pop()
-else if(x!=="."&&x!=="")p.push(x)
+if(x==="..") p.pop()
+else if(x!=="." && x!=="") p.push(x)
 })
 
 return p
@@ -311,7 +313,7 @@ print("")
 return
 }
 
-print(Object.keys(n.children).join("  "))
+print(Object.keys(n.children || {}).join("  "))
 }
 
 function cmd_cd(a){
@@ -419,7 +421,7 @@ e.preventDefault()
 if(e.ctrlKey&&e.key==="x"){
 nanoOverlay.style.display="none"
 nanoActive=false
-cmd.focus()
+setTimeout(()=>cmd.focus(),0)
 }
 
 })
