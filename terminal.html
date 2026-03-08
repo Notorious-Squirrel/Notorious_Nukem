@@ -438,9 +438,23 @@ function run(line){
 
 if(sshPending){
 
-let hostData = REMOTE_HOSTS[sshHost]
+fetch("http://5.255.115.52:8000/api/ssh-login",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+host:sshHost,
+user:sshUser,
+password:line
+})
+})
+.then(res=>res.json())
+.then(data=>{
 
-if(line === hostData.password){
+if(data.success){
+
+let hostData = REMOTE_HOSTS[sshHost]
 
 currentHost={
 hostname:hostData.hostname,
@@ -458,8 +472,16 @@ print("Permission denied")
 
 }
 
-sshPending=false
 updatePrompt()
+
+})
+.catch(()=>{
+
+print("Connection error")
+
+})
+
+sshPending=false
 return
 }
 
