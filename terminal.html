@@ -449,10 +449,21 @@ user:sshUser,
 password:line
 })
 })
-.then(res=>res.json())
+.then(res=>{
+
+if(!res.ok){
+print("Permission denied")
+sshPending=false
+updatePrompt()
+return
+}
+
+return res.json()
+
+})
 .then(data=>{
 
-if(data.success){
+if(!data) return
 
 let hostData = REMOTE_HOSTS[sshHost]
 
@@ -466,22 +477,19 @@ cwd=["home",sshUser]
 
 print("Login successful")
 
-}else{
-
-print("Permission denied")
-
-}
-
 updatePrompt()
+
+sshPending=false
 
 })
 .catch(()=>{
 
 print("Connection error")
+sshPending=false
+updatePrompt()
 
 })
 
-sshPending=false
 return
 }
 
