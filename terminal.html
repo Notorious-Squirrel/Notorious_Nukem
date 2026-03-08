@@ -452,9 +452,8 @@ password:line
 .then(res=>{
 
 if(!res.ok){
-print("Permission denied")
-sshPending=false
-updatePrompt()
+print("Permission denied, please try again.")
+print(`${sshUser}@${sshHost}'s password:`)
 return
 }
 
